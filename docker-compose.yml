@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.3.0
+    container_name: mysql-server
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: knuckle
+      MYSQL_USER: appuser
+      MYSQL_PASSWORD: apppassword
+    ports:
+      - "3306:3306"
+    volumes:
+      # 데이터 영속성을 위한 볼륨 마운트
+      - mysql_data:/var/lib/mysql
+      # migrate 폴더의 모든 SQL 파일을 초기화 스크립트로 마운트
+      - ./migrate:/docker-entrypoint-initdb.d
+      # 설정 파일 마운트 (옵션)
+      # - ./my.cnf:/etc/mysql/conf.d/my.cnf
+    networks:
+      - mysql-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  mysql-network:
+    driver: bridge
