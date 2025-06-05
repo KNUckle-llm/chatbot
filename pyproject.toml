@@ -40,6 +40,7 @@ dependencies = [
     "jsonpatch==1.33",
     "jsonpointer==3.0.0",
     "langchain==0.3.25",
+    "langchain-chroma>=0.2.3",
     "langchain-community==0.3.24",
     "langchain-core==0.3.60",
     "langchain-huggingface==0.2.0",

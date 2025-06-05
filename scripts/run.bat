@@ -36,7 +36,9 @@ IF NOT EXIST ".venv" (
 :: 4. Install dependencies
 echo [4/5] Installing project dependencies from pyproject.toml...
 call .venv\Scripts\activate
-uv add -r requirements.txt
+uv lock
+uv sync
+
 
 :: 5. Run FastAPI server
 echo [5/5] Starting FastAPI server at http://localhost:8000 ...
