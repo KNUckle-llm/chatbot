@@ -1,2 +1,3 @@
 .env
 ChromaDB/
+__pycache__
