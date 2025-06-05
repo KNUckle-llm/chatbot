@@ -10,7 +10,7 @@ ENV MYSQL_PASSWORD=apppassword
 # COPY my.cnf /etc/mysql/conf.d/
 
 # 초기화 스크립트 복사
-COPY init-schema.sql /docker-entrypoint-initdb.d/
+COPY /migrate/001-init-schema.sql /docker-entrypoint-initdb.d/
 
 # 포트 노출
 EXPOSE 3306
