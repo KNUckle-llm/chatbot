@@ -20,9 +20,21 @@ fi
 
 # 2. Run MySQL Docker container
 if [ -f "Dockerfile" ]; then
-  echo "[2/5] Building and running MySQL Docker container..."
-  docker build -t chatbot-mysql .
-  docker run -d --name chatbot-mysql -p 3306:3306 chatbot-mysql
+  # Check if container is already running
+  if docker ps --format "table {{.Names}}" | grep -q "^chatbot-mysql$"; then
+    echo "[2/5] MySQL Docker container is already running. Skipping..."
+  else
+    echo "[2/5] Building and running MySQL Docker container..."
+
+    # Stop and remove existing container if it exists but not running
+    if docker ps -a --format "table {{.Names}}" | grep -q "^chatbot-mysql$"; then
+      echo "[INFO] Removing existing stopped container..."
+      docker rm chatbot-mysql
+    fi
+
+    docker build -t chatbot-mysql .
+    docker run -d --name chatbot-mysql -p 3306:3306 chatbot-mysql
+  fi
 else
   echo "[WARNING] Dockerfile not found. MySQL container will not be started."
 fi
