@@ -19,6 +19,7 @@ dependencies = [
     "certifi==2025.4.26",
     "charset-normalizer==3.4.2",
     "colorama==0.4.6",
+    "cryptography>=45.0.3",
     "dataclasses-json==0.6.7",
     "deprecated>=1.2.18",
     "distro==1.9.0",

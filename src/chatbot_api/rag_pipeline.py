@@ -60,22 +60,13 @@ def init_session(session_id: str):
 def get_session_history(session_id: str):
     return history_store[session_id]
 
-# RAG chain components
-DEPARTMENT_MAP = {
-    "ALL(전체)" : "knu_chroma_db_all",
-    "Software Department (소프트웨어학과)": "knu_chroma_db_software",
-    "Department of Computer Engineering (컴퓨터공학과)": "knu_chroma_db_computer",
-    "Department of Architecture (건축학과)": "knu_chroma_db_architecture",
-    "Department of Chemical Engineering (화학공학부)/Chemical Engineering Major (화학공학전공)": "knu_chroma_db_chemical_engineering_major",
-    "National Kongju University SW Centered University Business Group (국립공주대학교 SW중심대학사업단)": "knu_chroma_db_sw_centerd_university_business_group",
-}
 
 retriever = None
 rag_chain = None
 
 def rebuild_chain(selected_dept: str = None):
     global retriever, rag_chain
-    db_path = f"./ChromaDB/{DEPARTMENT_MAP.get(selected_dept, 'knu_chroma_db')}"
+    db_path = "./ChromaDB/knu_chroma_db_all"
     db = Chroma(persist_directory=db_path, embedding_function=hf_embeddings)
 
     results = db.get(include=["documents", "metadatas"])
