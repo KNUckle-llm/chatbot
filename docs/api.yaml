@@ -1,0 +1,154 @@
+openapi: 3.0.3
+info:
+  title: KNUckle API Document
+  description: KNUckle API Document
+  version: 1.0.0
+servers:
+  - url: 'http://localhost:8000'
+    description: Local development server
+
+paths:
+  /chat:
+    post:
+      summary: 챗봇과 대화하기
+      description: 사용자의 질문을 받아 AI 챗봇이 답변을 생성합니다.
+      operationId: chatWithBot
+      tags:
+        - Chat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - question
+                - session_id
+              properties:
+                question:
+                  type: string
+                  description: 사용자가 챗봇에게 묻는 질문
+                  example: "강남대학교의 입학 절차가 어떻게 되나요?"
+                  minLength: 1
+                  maxLength: 1000
+                session_id:
+                  type: string
+                  description: 대화 세션을 구분하기 위한 고유 식별자 (임의 문자열)
+                  example: "user_123_20240606_001"
+                  minLength: 1
+                  maxLength: 100
+            examples:
+              기본_질문:
+                summary: 기본적인 질문 예시
+                value:
+                  question: "강남대학교의 입학 절차가 어떻게 되나요?"
+                  session_id: "user_123_20240606_001"
+              복잡한_질문:
+                summary: 복잡한 질문 예시
+                value:
+                  question: "컴퓨터공학과의 졸업 요건과 취업률에 대해 자세히 알려주세요."
+                  session_id: "user_456_20240606_002"
+      responses:
+        '200':
+          description: 성공적으로 답변을 생성함
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - answer
+                properties:
+                  answer:
+                    type: string
+                    description: AI 챗봇이 생성한 답변
+                    example: "강남대학교의 입학 절차는 다음과 같습니다. 1. 온라인 원서접수 2. 서류 제출 3. 면접 또는 시험 4. 합격자 발표 5. 등록금 납부입니다."
+              examples:
+                성공_응답:
+                  summary: 성공적인 응답 예시
+                  value:
+                    answer: "강남대학교의 입학 절차는 다음과 같습니다. 1. 온라인 원서접수 2. 서류 제출 3. 면접 또는 시험 4. 합격자 발표 5. 등록금 납부입니다."
+        '400':
+          description: 잘못된 요청 (필수 필드 누락 또는 잘못된 형식)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: 에러 메시지
+                  details:
+                    type: string
+                    description: 에러 상세 정보
+              examples:
+                필수_필드_누락:
+                  summary: 필수 필드 누락 에러
+                  value:
+                    error: "Bad Request"
+                    details: "question field is required"
+                질문_길이_초과:
+                  summary: 질문 길이 초과 에러
+                  value:
+                    error: "Bad Request"
+                    details: "question length exceeds maximum limit of 1000 characters"
+        '500':
+          description: 서버 내부 오류
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: 에러 메시지
+                  details:
+                    type: string
+                    description: 에러 상세 정보
+              examples:
+                서버_오류:
+                  summary: 서버 내부 오류
+                  value:
+                    error: "Internal Server Error"
+                    details: "AI model is temporarily unavailable"
+
+components:
+  schemas:
+    ChatRequest:
+      type: object
+      required:
+        - question
+        - session_id
+      properties:
+        question:
+          type: string
+          description: 사용자 질문
+          minLength: 1
+          maxLength: 1000
+        session_id:
+          type: string
+          description: 세션 식별자
+          minLength: 1
+          maxLength: 100
+
+    ChatResponse:
+      type: object
+      required:
+        - answer
+      properties:
+        answer:
+          type: string
+          description: AI 챗봇 답변
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: 에러 메시지
+        details:
+          type: string
+          description: 에러 상세 정보
+
+tags:
+  - name: Chat
+    description: 챗봇 대화 관련 API
