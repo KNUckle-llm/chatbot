@@ -68,9 +68,15 @@ def rebuild_chain(selected_dept: str = None):
     global retriever, rag_chain
     db_path = "./ChromaDB/knu_chroma_db_all"
     db = Chroma(persist_directory=db_path, embedding_function=hf_embeddings)
-
     results = db.get(include=["documents", "metadatas"])
+    print(results)
     docs = [Document(page_content=d, metadata=m) for d, m in zip(results["documents"], results["metadatas"])]
+
+    # docs가 비어있는지 확인
+    if not docs:
+        print("[WARNING] No documents found. Please check your document loading process.")
+        # 기본 더미 문서를 생성하거나 None을 반환
+        return None
 
     chroma_retriever = db.as_retriever(search_type="mmr", search_kwargs={"k": 3, "fetch_k": 10, "lambda_mult": 0.5})
     bm25_retriever = BM25Retriever.from_documents(docs)
