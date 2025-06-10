@@ -217,10 +217,10 @@ def rebuild_chain(selected_dept: str = None):
             history_messages_key="memory"
         )
 
-        return True
     except Exception as e:
         logger.error(f"RAG 체인 구성 실패: {e}")
-        return False
+        
+    return rag_chain
 
 
 def answer_question(question: str, session_id: str, selected_dept: str = 'ALL(전체)') -> str:
