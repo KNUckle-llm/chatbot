@@ -1,35 +1,50 @@
-version: '3.8'
-
 services:
-  mysql:
+  db:
     image: mysql:8.3.0
     container_name: mysql-server
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: knuckle
-      MYSQL_USER: appuser
-      MYSQL_PASSWORD: apppassword
+      MYSQL_DATABASE:   knuckle
+      MYSQL_USER:       appuser
+      MYSQL_PASSWORD:   apppassword
     ports:
       - "3306:3306"
     volumes:
-      # 데이터 영속성을 위한 볼륨 마운트
       - mysql_data:/var/lib/mysql
-      # migrate 폴더의 모든 SQL 파일을 초기화 스크립트로 마운트
       - ./migrate:/docker-entrypoint-initdb.d
-      # 설정 파일 마운트 (옵션)
-      # - ./my.cnf:/etc/mysql/conf.d/my.cnf
-    networks:
-      - mysql-network
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 30s
       timeout: 20s
       retries: 10
+    networks:
+      - app-network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: chatbot-api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: mysql+pymysql://appuser:apppassword@db:3306/knuckle
+    ports:
+      - "8000:8000"
+    volumes:
+      # 1) 프로젝트 전체 마운트
+      - .:/app
+      # 2) .venv 폴더만 익명 볼륨으로 덮어쓰기
+      - /app/.venv
+    networks:
+      - app-network
 
 volumes:
   mysql_data:
-    driver: local
 
 networks:
-  mysql-network:
+  app-network:
     driver: bridge

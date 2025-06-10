@@ -1,19 +1,31 @@
-FROM mysql:8.3.0
+FROM python:3.11-slim
 
-# 환경 변수 설정
-ENV MYSQL_ROOT_PASSWORD=rootpassword
-ENV MYSQL_DATABASE=knuckle
-ENV MYSQL_USER=appuser
-ENV MYSQL_PASSWORD=apppassword
+COPY --from=ghcr.io/astral-sh/uv:0.7.12 /uv /uvx /bin/
 
-# MySQL 설정 파일 복사 (옵션)
-# COPY my.cnf /etc/mysql/conf.d/
+# 로그를 바로 출력하도록 설정
+ENV PYTHONUNBUFFERED=1
 
-# 초기화 스크립트 복사
-COPY /migrate/001-init-schema.sql /docker-entrypoint-initdb.d/
+# ─── 빌드 도구 설치 (g++, make 등) ───────────
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends build-essential \
+    && rm -rf /var/lib/apt/lists/*
 
-# 포트 노출
-EXPOSE 3306
+# 작업 디렉터리 설정
+WORKDIR /app
 
-# MySQL 서버 시작
-CMD ["mysqld"]
+# uv.lock 파일 복사
+COPY pyproject.toml uv.lock README.md ./
+RUN mkdir -p ./src/chatbot_api
+RUN touch ./src/chatbot_api/__init__.py
+
+# lockfile 기반으로 의존성 동기화
+RUN uv sync --locked
+
+# 프로젝트 소스 전체 복사 (uv.lock 포함)
+ADD . .
+
+# FastAPI/uvicorn이 외부에서 접근 가능하도록 포트 노출
+EXPOSE 8000
+
+# 컨테이너 시작 시 애플리케이션 실행
+CMD ["uv", "run", "chatbot-api"]
