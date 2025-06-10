@@ -9,20 +9,7 @@ from typing import AsyncGenerator, Dict, Any
 import logging
 from datetime import datetime
 import chatbot_api.routers.chat_history as chat
-
-app = FastAPI(title="KNU Streaming Chatbot API")
-
-# CORS 미들웨어 설정
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Next.js 개발 서버
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# 라우터 등록
-app.include_router(chat.router, prefix="/chat", tags=["chat"])
+from contextlib import asynccontextmanager
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -51,18 +38,37 @@ except ImportError:
     logger.warning("RAG 파이프라인을 찾을 수 없습니다. 더미 함수를 사용합니다.")
 
 
-    # 더미 함수들 (실제 구현 전 테스트용)
-    def rebuild_chain():
-        logger.info("더미 RAG 체인 초기화")
-        return True
+    # # 더미 함수들 (실제 구현 전 테스트용)
+    # def rebuild_chain():
+    #     logger.info("더미 RAG 체인 초기화")
+    #     return True
 
-# FastAPI 서버 시작 시 체인 구성
-try:
-    rag_chain = rebuild_chain()
-    logger.info("✅ RAG 체인 초기화 완료")
-except Exception as e:
-    logger.error(f"❌ RAG 체인 초기화 실패: {e}")
-    rag_chain = None
+# 서버 시작 시 RAG 체인 초기화
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("🔧 FastAPI startup - RAG 체인 구성 시작")
+    global rag_chain
+    try:
+        rag_chain = rebuild_chain()
+        logger.info("✅ RAG 체인 초기화 완료")
+    except Exception as e:
+        logger.error(f"🚨 RAG 체인 초기화 중 오류: {e}")
+    yield
+
+
+app = FastAPI(title="KNU Streaming Chatbot API", lifespan=lifespan)
+
+# CORS 미들웨어 설정
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # Next.js 개발 서버
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# 라우터 등록
+app.include_router(chat.router, prefix="/chat", tags=["chat"])
 
 
 # 🚀 새로운 스트리밍 채팅 API (SSE 방식)
