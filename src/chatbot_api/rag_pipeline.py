@@ -37,16 +37,32 @@ llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.0)
 hf_embeddings = HuggingFaceEmbeddings(model_name="BAAI/bge-m3")
 
 
+def get_current_korean_date():
+    now = datetime.now()
+    weekdays = ['월', '화', '수', '목', '금', '토', '일']
+    weekday = weekdays[now.weekday()]
+    return f"{now.year}년 {now.month}월 {now.day}일 {weekday}요일"
+
+def create_dynamic_system_message():
+    current_date = get_current_korean_date()
+    date_header = f"""## 📅 현재 시스템 정보
+**현재 날짜**: {current_date}
+**기준 시간**: 표준시 (UTC)
+
+"""
+    return date_header + system_message
+
+
 # Original prompt template
 prompt_template = ChatPromptTemplate.from_messages([
-    ("system", system_message),
+    ("system", create_dynamic_system_message()),
     ("placeholder", "{memory}"),
     # ("user", "🔍 검색된 문서:\n{context}"),
     ("human", "{input}"),
 ])
 
 parser = StrOutputParser()
-trimmer = trim_messages(max_tokens=3500, token_counter=llm, strategy="last", include_system=True, start_on="human")
+trimmer = trim_messages(max_tokens=5000, token_counter=llm, strategy="last", include_system=True, start_on="human")
 
 # Session store
 retriever = None
