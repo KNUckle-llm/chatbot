@@ -1,0 +1,47 @@
+name: 🔧 Refactor
+description: 코드 구조/성능 개선을 위한 리팩터링 이슈 템플릿
+title: "[REFACTOR] "
+labels: ["refactor"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        코드 품질, 가독성, 유지보수성 향상을 위한 리팩터링 요청 템플릿입니다.
+
+  - type: input
+    id: summary
+    attributes:
+      label: 요약
+      description: 리팩터링 대상과 목적을 간단히 작성해주세요.
+      placeholder: 예) UserService의 중복 코드 제거
+
+  - type: textarea
+    id: reason
+    attributes:
+      label: 리팩터링 필요성
+      description: 왜 리팩터링이 필요한지 설명해주세요.
+      placeholder: |
+        - 중복 코드가 많아 유지보수 비용이 큼
+        - 가독성이 낮아 신규 기여자가 이해하기 어려움
+        - 성능 저하 발생 가능성 있음
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: 리팩터링 범위
+      description: 어떤 파일/모듈/기능을 대상으로 할지 작성해주세요.
+      placeholder: |
+        - services/user_service.py
+        - utils/date_parser.py
+
+  - type: textarea
+    id: approach
+    attributes:
+      label: 리팩터링 접근 방법 (선택)
+      description: 구체적으로 어떤 방식으로 개선할 계획인지 작성해주세요.
+      placeholder: |
+        - 공통 함수 추출
+        - 클래스 구조 재정리
+        - 불필요한 의존성 제거
