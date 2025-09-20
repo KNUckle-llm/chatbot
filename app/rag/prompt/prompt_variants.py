@@ -30,7 +30,7 @@ PROMPT_VARIANTS = {
 
 📚 출처:
 - 파일명: [파일명 또는 "해당 정보 없음"]
-- 부서/학과: [부서명 또는 "해당 정보 없음"]  
+- 부서/학과: [부서명 또는 "해당 정보 없음"]
 - URL: [URL 또는 "해당 정보 없음"]
 
 ※ "None", 빈 문자열, null 등은 절대 그대로 출력하지 마세요. 반드시 "해당 정보 없음"으로 대체하세요."""
@@ -63,7 +63,6 @@ I'll do my best to:
 Need more specific information? Feel free to ask follow-up questions!"""
     }
 }
-
 
 
 # Original system message
