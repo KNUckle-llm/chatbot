@@ -46,7 +46,7 @@ async def health_check():
         "status": "ok",
         "server_name": settings.APP_NAME,
         "version": settings.APP_VERSION,
-        "timestamp": datetime.now().isoformat()
+        "timestamp": datetime.now().astimezone().isoformat()
     }
 
 # from fastapi import FastAPI, Request, HTTPException
