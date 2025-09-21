@@ -1,0 +1,38 @@
+name: feature
+description: 새로운 기능 추가를 위한 이슈 템플릿
+title: "[FEATURE] "
+labels: ["feature"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        새로운 기능 추가 요청 템플릿입니다.
+
+  - type: input
+    id: summary
+    attributes:
+      label: 요약
+      description: 새로운 기능과 목적을 간단히 작성해주세요.
+      placeholder: 예) User 프로필 사진 업로드 기능
+
+  - type: textarea
+    id: reason
+    attributes:
+      label: 기능 필요성
+      description: 왜 이 기능이 필요한지 설명해주세요.
+      placeholder: |
+        - 사용자 경험 향상
+        - 서비스 차별화
+        - 특정 요구사항 충족
+
+  - type: textarea
+    id: approach
+    attributes:
+      label: 기능 구현 방법
+      description: 구체적으로 어떤 방식으로 구현할 계획인지 작성해주세요.
+      placeholder: |
+        - 프론트엔드: React 컴포넌트 추가
+        - 백엔드: API 엔드포인트 생성
+        - 데이터베이스: 새로운 테이블/컬럼 추가
