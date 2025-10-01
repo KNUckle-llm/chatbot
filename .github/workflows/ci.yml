@@ -2,9 +2,9 @@
 	
   on:
     push:
-      branches: [ #5/github-actions ]
+      branches: [ "#5/github-actions" ]
     pull_request:
-      branches: [ #5/github-actions ]
+      branches: [ "#5/github-actions" ]
 	
   
   jobs:
