@@ -5,8 +5,7 @@
       branches: [ "#5/github-actions" ]
     pull_request:
       branches: [ "#5/github-actions" ]
-	
-  
+
   jobs:
     Test-GitHub-Action:
       runs-on: ubuntu-latest
