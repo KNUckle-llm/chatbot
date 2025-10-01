@@ -1,0 +1,16 @@
+  name: CI
+	
+  on:
+    push:
+      branches: [ #5/github-actions ]
+    pull_request:
+      branches: [ #5/github-actions ]
+	
+  
+  jobs:
+    Test-GitHub-Action:
+      runs-on: ubuntu-latest
+      steps:
+        - name: echo-01
+          run: |
+            echo "TEST ECHO-01"
