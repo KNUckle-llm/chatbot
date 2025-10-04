@@ -12,5 +12,6 @@ dependencies = [
     "langchain-openai>=0.3.33",
     "pydantic-settings>=2.10.1",
     "pytest>=8.4.2",
+    "ragas>=0.3.6",
     "sentence-transformers>=5.1.1",
 ]
