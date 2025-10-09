@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
-from app.schema.chat import ChatRequest, ChatResponse
-from app.services.chat import generate_answer, generate_streaming_answer
+from src.api.schema.chat import ChatRequest, ChatResponse
+from src.rag.chat import generate_answer, generate_streaming_answer
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 

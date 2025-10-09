@@ -1,8 +1,8 @@
 from langchain_openai import ChatOpenAI
 
-from app.core.config import settings
-from app.services.prompt import PROMPT
-from app.services.rag import rag
+from src.core.config import settings
+from src.rag.prompt import PROMPT
+from src.rag.rag import rag
 
 
 llm = ChatOpenAI(model="gpt-4o-mini",

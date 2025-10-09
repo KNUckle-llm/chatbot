@@ -2,8 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
 
-from .core.config import settings
-from .api import chat
+from src.core.config import settings
+from src.api import chat
 
 
 app = FastAPI(
