@@ -11,14 +11,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 저장소 체크아웃
+      # 체크아웃
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Gitleaks 설치
+      - name: Install Gitleaks
+        run: |
+          curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v9.0.1/gitleaks-linux-amd64 -o /usr/local/bin/gitleaks
+          chmod +x /usr/local/bin/gitleaks
+          gitleaks version
+
       # Gitleaks 스캔
-      - name: Run Gitleaks Scan
-        uses: zricethezav/gitleaks-action@v2
-        with:
-          scan_path: .              # 현재 디렉터리 전체 스캔
-          redact: true              # 민감 정보 로그 마스킹
-          fail_on_secrets: true     # 시크릿 발견 시 CI 실패 처리
+      - name: Run Gitleaks scan
+        run: |
+          gitleaks detect --source . --no-banner --verbose --redact
