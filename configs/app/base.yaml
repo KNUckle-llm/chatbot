@@ -1,0 +1,9 @@
+app:
+  name: KNUC API Server
+  version: 0.1.0
+
+embedding:
+  model: sentence-transformers/all-MiniLM-L6-v2
+
+logging:
+  level: INFO
