@@ -1,15 +1,27 @@
-  name: CI
+name: CI
 
-  on:
-    push:
-      branches: [ "#5/github-actions" ]
-    pull_request:
-      branches: [ "#5/github-actions" ]
+on:
+  push:
+    branches: [ "#5/github-actions" ]
+  pull_request:
+    branches: [ "#5/github-actions" ]
 
-  jobs:
-    Test-GitHub-Action:
-      runs-on: ubuntu-latest
-      steps:
-        - name: echo-01
-          run: |
-            echo "TEST ECHO-01"
+jobs:
+  gitleaks-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 저장소 체크아웃
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Gitleaks 설치
+      - name: Install Gitleaks
+        run: |
+          curl -sSL https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks-linux-amd64 -o /usr/local/bin/gitleaks
+          chmod +x /usr/local/bin/gitleaks
+
+      # Gitleaks 검사
+      - name: Run Gitleaks scan
+        run: |
+          gitleaks detect --source . --no-banner --verbose --redact
