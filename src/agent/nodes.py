@@ -3,13 +3,24 @@ from langchain_core.messages import SystemMessage, RemoveMessage
 
 from .state import CustomState
 from ..core.config import settings
+from .utils import (
+    detect_language,
+)
 
 
 def _configure_llm() -> ChatOpenAI:
-    # 구성은 configs/app/*.yaml 파일에서 관리
-    return ChatOpenAI(model="gpt-5-nano",
-                      api_key=settings.OPENAI_API_KEY,
-                      temperature=0, max_retries=3)
+    return ChatOpenAI(
+        model=settings.llm.model,
+        api_key=settings.OPENAI_API_KEY,
+        temperature=settings.llm.temperature,
+        max_retries=settings.llm.retry
+    )
+
+
+def detect_language_node(state: CustomState):
+    return {
+        "language": detect_language(state.get("messages")[-1].content)
+    }
 
 
 def answer_node(state: CustomState):
