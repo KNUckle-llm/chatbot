@@ -42,4 +42,5 @@ jobs:
 
       # Ruff 포매팅 검사
       - name: Run Ruff formatting check
-        run: uv run ruff format --diff .
+        #run: uv run ruff format --diff .   먼저 실행 후 자동 포매팅(자동 포매팅 부분 확인 가능)
+        run: uv run ruff format .
