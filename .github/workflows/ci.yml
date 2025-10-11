@@ -42,4 +42,4 @@ jobs:
 
       # Ruff 포매팅 검사
       - name: Run Ruff formatting check
-        run: uv run ruff format --check .
+        run: uv run ruff format --diff .
