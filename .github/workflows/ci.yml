@@ -65,11 +65,9 @@ jobs:
         with:
           python-version: "3.11"
 
-      # uv 설치 (선택 사항, 테스트에서 uv 필요 없다면 생략 가능)
-      - name: Install uv
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      # 프로젝트 의존성 설치
+      - name: Install project dependencies
+        run: pip install -r requirements.txt
 
       # pytest 설치
       - name: Install pytest
