@@ -7,7 +7,8 @@ on:
     branches: ["#5/github-actions"]
 
 jobs:
-  gitleaks-scan:
+  QA:
+    name: Quality Assurance
     runs-on: ubuntu-latest
 
     steps:
@@ -15,10 +16,30 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Gitleaks v1 액션 사용
+      # Gitleaks 검사
       - name: Run Gitleaks scan
         uses: zricethezav/gitleaks-action@v1
         with:
           scan_path: .          # 현재 디렉터리 전체 스캔
           redact: true          # 민감 정보 로그 마스킹
           fail_on_secrets: true # 시크릿 발견 시 CI 실패 처리
+
+      # Python 환경 세팅
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # uv 설치
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      # Ruff 설치 (uv 기반)
+      - name: Install Ruff with uv
+        run: uv tool install ruff
+
+      # Ruff 포매팅 검사
+      - name: Run Ruff formatting check
+        run: uv run ruff format --check .
