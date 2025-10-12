@@ -1,15 +1,29 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
+from langgraph.checkpoint.memory import InMemorySaver
 
 from src.core.config import settings
 from src.api import chat
+from src.agent.graph import build_graph
 
+NAME = settings["app"]["name"]
+VERSION = settings["app"]["version"]
 
 app = FastAPI(
-    title=settings.APP_NAME,
-    version=settings.APP_VERSION,
+    title=NAME,
+    version=VERSION,
 )
+
+
+# 서버 시작 전 이벤트
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    checkpointer = InMemorySaver()
+    build_graph(checkpointer)
+    yield
+
 
 # CORS 미들웨어 설정
 app.add_middleware(
@@ -28,7 +42,7 @@ app.include_router(chat.router)
 async def health_check():
     return {
         "status": "ok",
-        "server_name": settings.APP_NAME,
-        "version": settings.APP_VERSION,
+        "server_name": NAME,
+        "version": VERSION,
         "timestamp": datetime.now().astimezone().isoformat()
     }

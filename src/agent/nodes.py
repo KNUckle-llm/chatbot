@@ -10,16 +10,17 @@ from .utils import (
 
 def _configure_llm() -> ChatOpenAI:
     return ChatOpenAI(
-        model=settings.llm.model,
-        api_key=settings.OPENAI_API_KEY,
-        temperature=settings.llm.temperature,
-        max_retries=settings.llm.retry
+        model=settings["llm"]["model"],
+        api_key=settings["openai_api_key"],
+        temperature=settings["llm"]["temperature"],
+        max_retries=settings["llm"]["retry"]
     )
 
 
 def detect_language_node(state: CustomState):
+    message = str(state.get("messages")[-1].content)
     return {
-        "language": detect_language(state.get("messages")[-1].content)
+        "language": detect_language(message)
     }
 
 

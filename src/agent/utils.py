@@ -21,7 +21,7 @@ def detect_language(text: str, threshold: float = 0.6) -> Literal["ko", "en"]:
                             그 외에는 "en" 반환
 
     """
-    encoding = tiktoken.encoding_for_model(settings.llm.model)
+    encoding = tiktoken.encoding_for_model(settings["llm"]["model"])
     tokens = encoding.encode(text)
     total_len = len(tokens)
 
