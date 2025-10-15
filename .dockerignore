@@ -5,3 +5,9 @@ __pycache__/
 *.pyd
 *.log
 .git
+
+
+# 도커 허브에 공유되면 안됨
+*.pem
+Dockerfile
+node_module
