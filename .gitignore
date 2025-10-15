@@ -178,3 +178,6 @@ pyrightconfig.json
 ChromaDB/
 knu_chatbot_db/
 vectorstore/
+
+# AWS
+*.pem
