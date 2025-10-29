@@ -1,33 +1,38 @@
-from langgraph.checkpoint.memory import InMemorySaver  # short-term memory
-from langgraph.store.memory import InMemoryStore  # long-term memory
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.state import CompiledStateGraph
 
 from ..core.logger import get_logger
 from .state import CustomState
 from .nodes import (
-    answer_node,
-    detect_language_node,
+    language_detection_node,
+    retrieval_node,
+    generation_node,
+    summarization_node,
 )
 
 logger = get_logger(__name__)
 
 
-def build_graph():
-    checkpointer = InMemorySaver()  # short-term memory
-    # store = InMemoryStore()  # long-term memory
+def build_graph(checkpointer, store=None) -> CompiledStateGraph:
     builder = StateGraph(CustomState)
 
-    logger.debug("그래프 빌드 시작")
-    builder.add_node("detect_language", detect_language_node)
-    builder.add_node("answer", answer_node)
+    logger.info("Generating Node...")
+    builder.add_node("detect_language", language_detection_node)
+    builder.add_node("retrieve", retrieval_node)
+    builder.add_node("generate", generation_node)
+    builder.add_node("summarize", summarization_node)
+    logger.info("Node generation complete..!")
 
+    logger.info("Adding Edges...")
     builder.add_edge(START, "detect_language")
-    builder.add_edge("detect_language", "answer")
-    builder.add_edge("answer", END)
+    builder.add_edge("detect_language", "retrieve")
+    builder.add_edge("retrieve", "generate")
+    builder.add_edge("generate", "summarize")
+    builder.add_edge("summarize", END)
+    logger.info("Edges added successfully..!")
 
-    graph = builder.compile(checkpointer=checkpointer,)
-    logger.info("그래프 빌드 완료")
+    graph = builder.compile(checkpointer=checkpointer, store=store)
+    logger.info("Successfully compiled the state graph :D")
     return graph
 
 
