@@ -8,7 +8,7 @@ logger.remove()
 
 logger.add(
     sys.stdout,
-    level=settings.logging.level or "INFO",
+    level=settings["logging"]["level"] or "INFO",
     colorize=True,
     format=(
         "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
