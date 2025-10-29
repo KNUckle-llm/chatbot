@@ -1,0 +1,10 @@
+{"id":"F-001","scenario":"F","language":"ko","question":"TOPCIT 시험은 언제 실시되나요?","ground_truth":"제24회 TOPCIT 정기평가는 2025년 11월 1일(토) 09:30부터 12:00까지 진행됩니다."},
+{"id":"F-002","scenario":"F","language":"ko","question":"TOPCIT 시험 장소가 어디인가요?","ground_truth":"시험 장소는 국립공주대학교 천안캠퍼스 PC실로 예정되어 있습니다."},
+{"id":"F-003","scenario":"F","language":"ko","question":"누가 TOPCIT에 응시할 수 있나요?","ground_truth":"SW중심대학사업 주관학과(소프트웨어학과, 컴퓨터공학과, 스마트정보기술공학과, 인공지능학부)의 2~4학년 재학생 180명이 응시 대상입니다. 단, 정원 초과 시 2학년 학생은 접수가 취소될 수 있습니다."},
+{"id":"F-004","scenario":"F","language":"ko","question":"TOPCIT 단체 접수는 어떻게 하나요?","ground_truth":"TOPCIT 홈페이지(https://www.topcit.or.kr)에서 회원가입 후, 구글 온라인 신청서(https://forms.gle/KFmiXv8yrzKtdKa59)를 제출하면 됩니다. SW중심대학사업단에서 단체 등록을 진행합니다."},
+{"id":"F-005","scenario":"F","language":"ko","question":"TOPCIT 구글폼 접수기간은 언제인가요?","ground_truth":"2025년 9월 15일(월) 08:30부터 9월 16일(화) 15:00까지 선착순으로 접수합니다."},
+{"id":"F-006","scenario":"F","language":"ko","question":"TOPCIT 응시자 정보는 언제까지 등록해야 하나요?","ground_truth":"응시자 정보 등록은 2025년 9월 19일(금)까지 완료해야 합니다."},
+{"id":"F-007","scenario":"F","language":"ko","question":"TOPCIT 성적 발표는 언제인가요?","ground_truth":"주어진 자료에는 TOPCIT 성적 발표 일정에 대한 정보가 없습니다."},
+{"id":"F-008","scenario":"F","language":"ko","question":"TOPCIT 단체 신청 관련 담당 부서는 어디인가요?","ground_truth":"SW중심대학사업단에서 TOPCIT 정기평가 단체 접수를 주관합니다."},
+{"id":"F-009","scenario":"F","language":"ko","question":"TOPCIT 신청 전에 해야 할 일이 있나요?","ground_truth":"TOPCIT 홈페이지에서 회원가입을 먼저 해야 하며, 구글 온라인 신청 시 TOPCIT 회원 ID가 필요합니다."},
+{"id":"F-010","scenario":"F","language":"ko","question":"TOPCIT 신청 인원이 초과되면 어떻게 되나요?","ground_truth":"정원(180명)을 초과할 경우 2학년 신청 학생은 접수가 취소될 수 있습니다."}
