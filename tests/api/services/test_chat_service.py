@@ -1,11 +1,13 @@
+import pytest
 from unittest.mock import patch, AsyncMock
-from app.services.chat import generate_response
+from app.services.chat import generate_answer
 
-@patch("app.services.chat.llm", new_callable=AsyncMock)  # <- 여기 변경
-def test_generate_response(mock_llm):
-    mock_llm.ainvoke.return_value = "Hi!"  # generate_response에서 await llm.ainvoke(...)
+@pytest.mark.asyncio
+@patch("app.services.chat.rag_chain", new_callable=AsyncMock)
+async def test_generate_answer(mock_chain):
+    mock_chain.ainvoke.return_value = "Hi!"
     
-    result = generate_response("Hello")  # 비동기면 await 필요: await generate_response("Hello")
+    result = await generate_answer("Hello")
     
     assert result == "Hi!"
-    mock_llm.ainvoke.assert_called_once_with("Hello")
+    mock_chain.ainvoke.assert_called_once_with("Hello")
