@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: ["**"]
+    branches: ["#5/github-actions"]
   pull_request:
-    branches: ["**"]
+    branches: ["#5/github-actions"]
 
 jobs:
   QA:
