@@ -81,4 +81,6 @@ jobs:
 
       # 테스트 실행
       - name: Run tests
-        run: uv run pytest tests/ --maxfail=1 --disable-warnings -v
+        run: |
+          export PYTHONPATH=$PWD
+          uv run pytest tests/ --maxfail=1 --disable-warnings -v
