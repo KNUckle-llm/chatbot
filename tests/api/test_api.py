@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 
-from app.main import app
-from app.core.config import settings
+from src.api.main import app
+from src.core.config import settings
 
 client = TestClient(app)
 
@@ -11,8 +11,8 @@ def test_read_main():
     assert response.status_code == 200
     assert response.json() == {
         "status": "ok",
-        "server_name": settings.APP_NAME,
-        "version": settings.APP_VERSION,
+        "server_name": settings["app"]["name"],
+        "version": settings["app"]["version"],
         # timestamp는 동적으로 생성되므로 값만 확인
         "timestamp": response.json()["timestamp"]
     }

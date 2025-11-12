@@ -1,0 +1,9 @@
+app:
+  name: KNUC API Server
+  version: 0.1.0
+
+embedding:
+  model: BAAI/bge-m3
+
+logging:
+  level: INFO
