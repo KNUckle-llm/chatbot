@@ -11,6 +11,11 @@ app = FastAPI(
     version=settings.APP_VERSION,
 )
 
+# 헬스체크 엔드포인트
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
+
 # CORS 미들웨어 설정
 app.add_middleware(
     CORSMiddleware,
