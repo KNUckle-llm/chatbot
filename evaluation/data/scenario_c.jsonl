@@ -1,5 +1,13 @@
+<<<<<<< HEAD
 {"id":"C-001","scenario":"C","language":"ko","question":"현장실습 신청서를 작성하려면 어디서 해야 하나요?","ground_truth":"국립공주대학교 현장실습 홈페이지에 로그인한 뒤 마이페이지에서 작성하면 된다."},
 {"id":"C-002","scenario":"C","language":"ko","question":"참여기관은 어떻게 찾아서 신청할 수 있나요?","ground_truth":"참여 기관을 검색해 해당 현장실습 신청서를 찾아 제출하면 된다."},
 {"id":"C-003","scenario":"C","language":"ko","question":"현장실습을 마친 뒤 학점을 받으려면 무엇을 제출해야 하나요?","ground_truth":"출근부를 제출하고 현장실습 수행 후 보고서를 작성하면 학점이 인정된다."},
 {"id":"C-004","scenario":"C","language":"ko","question":"현장실습에 로그인할 때 새 아이디를 만들어야 하나요?","ground_truth":"아이디는 기존과 동일하게 사용하면 된다."},
 {"id":"C-005","scenario":"C","language":"ko","question":"현장실습 공고는 어디서 확인할 수 있나요?","ground_truth":"국립공주대학교 현장실습 홈페이지에서 공고를 확인할 수 있다."}
+=======
+{"id":"C-001","scenario":"C","language":"ko","question":"현장실습 신청서를 작성하려면 어디서 해야 하나요?","ground_truth":"국립공주대학교 현장실습 홈페이지에 로그인한 뒤 마이페이지에서 작성하면 된다."}
+{"id":"C-002","scenario":"C","language":"ko","question":"참여기관은 어떻게 찾아서 신청할 수 있나요?","ground_truth":"참여 기관을 검색해 해당 현장실습 신청서를 찾아 제출하면 된다."}
+{"id":"C-003","scenario":"C","language":"ko","question":"현장실습을 마친 뒤 학점을 받으려면 무엇을 제출해야 하나요?","ground_truth":"출근부를 제출하고 현장실습 수행 후 보고서를 작성하면 학점이 인정된다."}
+{"id":"C-004","scenario":"C","language":"ko","question":"현장실습에 로그인할 때 새 아이디를 만들어야 하나요?","ground_truth":"아이디는 기존과 동일하게 사용하면 된다."}
+{"id":"C-005","scenario":"C","language":"ko","question":"현장실습 공고는 어디서 확인할 수 있나요?","ground_truth":"국립공주대학교 현장실습 홈페이지에서 공고를 확인할 수 있다."}
+>>>>>>> main

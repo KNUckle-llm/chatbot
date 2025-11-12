@@ -176,8 +176,13 @@ pyrightconfig.json
 # End of https://www.toptal.com/developers/gitignore/api/python
 
 ChromaDB/
+<<<<<<< HEAD
 knu_chatbot_db/
 vectorstore/
 
 # AWS
+=======
+
+# AWS EC2 접속 인증키 무시
+>>>>>>> main
 *.pem
