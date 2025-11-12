@@ -1,4 +1,3 @@
-import pytest
 from langchain_core.prompts import ChatPromptTemplate
 from app.services.prompt import PROMPT
 
