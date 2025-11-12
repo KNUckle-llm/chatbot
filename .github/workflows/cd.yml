@@ -1,0 +1,52 @@
+name: CD Workflow
+
+on:
+  push:
+    branches:
+      - "#5/github-actions"
+      - "#9/deploymentAWS-evaluation"
+    paths:
+      - "evaluation/chatbot_db/**"  # 폴더 내부 변경 감지
+  workflow_dispatch:  # ✅ 수동 실행 허용
+
+jobs:
+  deploy:
+    name: Deploy Vector DB Update
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1️⃣ 코드 체크아웃
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2️⃣ Docker 로그인Q
+      - name: Docker login
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      # 3️⃣ Docker 이미지 빌드 및 푸시
+      - name: Build and Push Docker image
+        run: |
+          docker build -t knu-chatbot .
+          docker tag knu-chatbot knuknuckle/knu-chatbot
+          docker push knuknuckle/knu-chatbot
+
+      # 4️⃣ EC2에 SSH 접속 후 배포
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_KEY }}
+          script: |
+            # 기존 컨테이너 종료 및 제거
+            docker stop knu-chatbot
+            docker rm knu-chatbot
+
+            # Docker Hub에서 최신 이미지 가져오기
+            docker pull knuknuckle/knu-chatbot
+
+            # 새 컨테이너 실행
+            docker run -d --rm -p 80:80 knuknuckle/knu-chatbot
