@@ -1,0 +1,10 @@
+{"id":"A-001","scenario":"A","language":"ko","question":"1학년은 1학기 때 어떤 과목들을 수강해야 하나요?","ground_truth":"2025학년도 1학기 1학년 필수 과목은 대학생활과미래설계, 비판적사고와소통, Communication in English ⅠorⅡ(L&R/S&W), 컴퓨팅적사고, 확률통계, C프로그래밍이며 남는 2학점은 균형교양이나 일반선택으로 수강 권장."}
+{"id":"A-002","scenario":"A","language":"ko","question":"토익 점수가 없으면 영어 과목은 어떤 걸 들어야 하나요?","ground_truth":"모의토익 미응시자 또는 300점 미만자는 반드시 기초영어를 수강하거나 300점 이상의 성적을 취득해야 Communication in English 과목을 들을 수 있음."}
+{"id":"A-003","scenario":"A","language":"ko","question":"선형대수 수업은 대면인가요, 비대면인가요?","ground_truth":"2025학년도 1학기 컴퓨터공학과 개설 수업 중 선형대수(김동근 교수님)와 컴퓨터자료구조(서영정 교수님)는 온라인 강의로 진행 예정."}
+{"id":"A-004","scenario":"A","language":"ko","question":"수강신청 기간은 언제인가요?","ground_truth":"2025학년도 1학기 수강신청은 2월 6일~2월 10일 사이 학년별 일정에 따라 진행되며, 신입생은 2월 25~26일에 수강신청."}
+{"id":"A-005","scenario":"A","language":"ko","question":"수강신청 때 교수님께 직접 부탁하면 수업 들을 수 있나요?","ground_truth":"개별적으로 교수님이나 강사님께 수강 허락을 구하는 것은 절대 불가하며, 학과 공지된 규칙에 따라 신청해야 함."}
+{"id":"A-006","scenario":"A","language":"ko","question":"기초영어를 안 듣고 Communication in English Ⅱ를 들을 수 있나요?","ground_truth":"모의토익 300점 미만자는 기초영어를 먼저 수강해야 하며, 300점 이상 성적표 제출 시에만 Communication in English Ⅱ 수강 가능."}
+{"id":"A-007","scenario":"A","language":"ko","question":"K-VALUE UP 과목은 이번 학기에도 있나요?","ground_truth":"K-VALUE UP 1, 2 과목은 2025학년도부터 폐지되었으며, 대체과목은 대학생활과미래설계(80분반)임."}
+{"id":"A-008","scenario":"A","language":"ko","question":"학점이월제는 신입생도 적용되나요?","ground_truth":"학점이월제는 직전학기 기준이 적용되므로 신입생에게는 해당되지 않으며, 2024학년도 2학기 이후 수강내역 기준으로 적용."}
+{"id":"A-009","scenario":"A","language":"ko","question":"일반선택 과목은 어떤 걸 들어야 하나요?","ground_truth":"일반선택은 과목 이수영역이 '일반선택'으로 표시된 교과목, 타 학과 전공 과목, 또는 OCU 과목 중 '일반선택'으로 명시된 것을 수강해야 함."}
+{"id":"A-010","scenario":"A","language":"ko","question":"균형교양은 어떻게 들어야 하나요?","ground_truth":"균형교양은 A(인간·사회·문화·역사), B(자연·생명·과학·기술), C(외국어·예술·건강·진로) 각 영역별로 3학점 이상 이수해야 하며 총 12학점 이상 필요."}

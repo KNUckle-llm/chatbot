@@ -3,6 +3,7 @@ import tiktoken
 from langchain_openai import ChatOpenAI
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
+from langchain_classic.tools.retriever import create_retriever_tool
 
 from ..core.config import settings
 from ..core.logger import get_logger
@@ -23,16 +24,22 @@ def initialize_components():
     )
 
     store = Chroma(
-        persist_directory="./chroma_db",
+        persist_directory="./chatbot_20251108",
         embedding_function=hf_embeddings,
     )
 
     retriever = store.as_retriever(
-        search_type="similarity",
-        search_kwargs={"k": 3}
+        search_type="mmr",
+        search_kwargs={"k": 5}
     )
 
-    return model, retriever
+    retriever_tool = create_retriever_tool(
+        name="retrieve_kongju_national_university_info",
+        description="Search and return information about 국립공주대학교",
+        retriever=retriever,
+    )
+
+    return model, store, retriever_tool
 
 
 def detect_language(text: str, threshold: float = 0.6) -> Literal["ko", "en"]:
@@ -51,7 +58,7 @@ def detect_language(text: str, threshold: float = 0.6) -> Literal["ko", "en"]:
     """
     if not text or not text.strip():
         return "ko"
-    
+
     encoding = tiktoken.encoding_for_model(settings["llm"]["model"])
     tokens = encoding.encode(text)
     total_len = len(tokens)
