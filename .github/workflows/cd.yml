@@ -41,9 +41,9 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_KEY }}
           script: |
-            docker pull knuknuckle/knu-chatbot:latest
+            sudo docker pull knuknuckle/knu-chatbot:latest
 
-            docker stop knu-chatbot || true
-            docker rm knu-chatbot || true
+            sudo docker stop knu-chatbot || true
+            sudo docker rm knu-chatbot || true
 
-            docker run -d --rm -p 80:80 --name knu-chatbot knuknuckle/knu-chatbot:latest
+            sudo docker run -d --rm -p 80:80 --name knu-chatbot knuknuckle/knu-chatbot:latest
