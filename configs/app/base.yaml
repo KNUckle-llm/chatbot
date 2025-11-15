@@ -7,3 +7,8 @@ embedding:
 
 logging:
   level: INFO
+
+llm:
+  model: "gpt-5-nano"
+  temperature: 0.1
+  retry: 3
