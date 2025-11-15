@@ -1,0 +1,8 @@
+llm:
+  provider: openai
+  model: gpt-5-nano
+  temperature: 0.0
+  retry: 3
+
+logging:
+  level: INFO
