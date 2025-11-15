@@ -51,6 +51,8 @@ jobs:
             sudo docker stop knu-chatbot || true
             sudo docker rm knu-chatbot || true
 
+            # 종료된 모든 컨테이너 정리
+            sudo docker container prune -f
             # 필요 없는 이미지 정리
             sudo docker image prune -f
 
