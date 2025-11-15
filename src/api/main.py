@@ -11,18 +11,23 @@ from src.agent.graph import build_graph
 NAME = settings["app"]["name"]
 VERSION = settings["app"]["version"]
 
-app = FastAPI(
-    title=NAME,
-    version=VERSION,
-)
-
 
 # 서버 시작 전 이벤트
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     checkpointer = InMemorySaver()
-    build_graph(checkpointer)
+    graph = build_graph(checkpointer)
+
+    app.state.checkpointer = checkpointer
+    app.state.graph = graph
     yield
+
+
+app = FastAPI(
+    title=NAME,
+    version=VERSION,
+    lifespan=lifespan
+)
 
 
 # CORS 미들웨어 설정
