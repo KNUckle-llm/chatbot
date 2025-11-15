@@ -1,5 +1,4 @@
 from typing import Literal
-from pydantic import BaseModel, Field
 
 from langchain_core.messages import SystemMessage, HumanMessage, RemoveMessage
 
@@ -16,6 +15,7 @@ model, store, retriever_tool = initialize_components()
 
 
 def language_detection_node(state: CustomState):
+    logger.info("Detecting language...")
     message = str(state.get("messages")[-1].content)
     return {
         "language": detect_language(message)
@@ -23,6 +23,7 @@ def language_detection_node(state: CustomState):
 
 
 def generate_query_or_response_node(state: CustomState):
+    logger.info("Generating query or response...")
     response = (
         model.bind_tools([retriever_tool]).invoke(state["messages"])
     )
@@ -46,6 +47,7 @@ def route_before_retrieval_node(
 
 
 def collect_documents_node(state: CustomState):
+    logger.info("Collecting documents...")
     tool_texts = []
     for msg in state.get("messages"):
         role = getattr(msg, "role", None) or getattr(msg, "type", None)
@@ -95,6 +97,7 @@ def collect_documents_node(state: CustomState):
 
 
 def rewrite_question_node(state: CustomState):
+    logger.info("Rewriting question for HITL...")
     language = state.get("language", "ko")
     prompt = HITL_PROMPT.format(language=language)
     response = model.invoke([{"role": "system", "content": prompt}])
@@ -102,6 +105,7 @@ def rewrite_question_node(state: CustomState):
 
 
 def generation_node(state: CustomState):
+    logger.info("Generating answer...")
     # state에서 language 가져오기
     language = state.get("language")
 
@@ -134,6 +138,7 @@ def generation_node(state: CustomState):
 
 
 def summarization_node(state: CustomState):
+    logger.info("Summarizing conversation...")
     summarization = state.get("summarization")
 
     if summarization:

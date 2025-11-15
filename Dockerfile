@@ -20,7 +20,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-install-project
 
 # 소스 코드 복사
-COPY app /app
+COPY src /src
 
 # 컨테이너 시작 시 애플리케이션 실행
-CMD ["/app/.venv/bin/fastapi", "run", "main.py", "--port", "80", "--host", "0.0.0.0"]
+CMD ["/app/.venv/bin/fastapi", "run", "src/api/main.py", "--port", "80", "--host", "0.0.0.0"]
