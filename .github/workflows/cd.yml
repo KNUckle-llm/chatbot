@@ -49,4 +49,4 @@ jobs:
             sudo docker stop knu-chatbot || true
             sudo docker rm knu-chatbot || true
 
-            sudo docker run -d --rm -p 80:80 --name knu-chatbot knuknuckle/knu-chatbot:latest
+            sudo docker run -d -p 80:80 --name knu-chatbot knuknuckle/knu-chatbot:latest
