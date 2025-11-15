@@ -25,5 +25,4 @@ COPY configs ./configs
 COPY .env ./.env
 
 # 컨테이너 시작 시 애플리케이션 실행
-#CMD ["/app/.venv/bin/fastapi", "run", "src/api/main.py", "--port", "80", "--host", "0.0.0.0"]
-CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "80"]
+CMD ["/app/.venv/bin/fastapi", "run", "src/api/main.py", "--port", "80", "--host", "0.0.0.0"]
