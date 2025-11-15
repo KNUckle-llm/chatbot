@@ -8,8 +8,7 @@ ENV WORKSPACE_ROOT=/app \
     UV_LINK_MODE=copy
 
 # 작업 디렉터리 설정
-#WORKDIR ${WORKSPACE_ROOT}
-WORKDIR /app/src
+WORKDIR ${WORKSPACE_ROOT}
 
 # pyproject.toml, uv.lock 복사
 COPY pyproject.toml uv.lock ./
@@ -26,5 +25,4 @@ COPY configs ./configs
 COPY .env ./.env
 
 # 컨테이너 시작 시 애플리케이션 실행
-#CMD ["/app/.venv/bin/uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "80"]
-CMD ["/app/.venv/bin/uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "80"]
+CMD ["/app/.venv/bin/uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "80"]
