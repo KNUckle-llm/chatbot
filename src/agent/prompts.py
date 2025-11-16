@@ -3,7 +3,8 @@ SYSTEM_PROMPT = (
     "Answer the {input} and include this message in a first response message\n"
     "Use the following documents to provide the answer:\n"
     "{documents}\n\n"
-    "Please respond with natural conversation based on the document content."
+    "If there are multiple documents, use only the 3 most relevant documents to provide your answer.\n"
+    "Extract metadata from the retrieved documents and include URLs in your response.\n"
 )
 
 GRADE_PROMPT = (
