@@ -3,7 +3,7 @@ import tiktoken
 from langchain_openai import ChatOpenAI
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
-from langchain_classic.tools.retriever import create_retriever_tool
+from langchain.tools import BaseTool
 
 from ..core.config import settings
 from ..core.logger import get_logger
@@ -11,7 +11,33 @@ from ..core.logger import get_logger
 logger = get_logger(__name__)
 
 
+# 1) metadata 포함 retriever tool 직접 구현
+class RetrieverWithMetadataTool(BaseTool):
+    name = "retrieve_kongju_national_university_info"
+    description = "Search vector DB and return content + metadata"
+
+    def __init__(self, retriever):
+        super().__init__()
+        self.retriever = retriever
+
+    def _run(self, query: str):
+        docs = self.retriever.invoke(query)
+
+        results = []
+        for d in docs:
+            results.append({
+                "content": d.page_content,
+                "metadata": d.metadata   # 🔥 metadata 보존됨
+            })
+
+        return results
+
+    async def _arun(self, query: str):
+        return self._run(query)
+
+
 def initialize_components():
+    # LLM 로드
     model = ChatOpenAI(
         model=settings["llm"]["model"],
         api_key=settings["openai_api_key"],
@@ -19,25 +45,25 @@ def initialize_components():
         max_retries=settings["llm"]["retry"]
     )
 
+    # 임베딩 로드
     hf_embeddings = HuggingFaceEmbeddings(
         model_name=settings["embedding"]["model"]
     )
 
+    # 벡터 DB
     store = Chroma(
         persist_directory="./chatbot_db",
         embedding_function=hf_embeddings,
     )
 
+    # Retriever 설정
     retriever = store.as_retriever(
         search_type="mmr",
         search_kwargs={"k": 3}
     )
 
-    retriever_tool = create_retriever_tool(
-        name="retrieve_kongju_national_university_info",
-        description="Search and return information about 국립공주대학교",
-        retriever=retriever,
-    )
+    # 기존 create_retriever_tool 제거하고 커스텀 툴 사용
+    retriever_tool = RetrieverWithMetadataTool(retriever)
 
     return model, store, retriever_tool
 
