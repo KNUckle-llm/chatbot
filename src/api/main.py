@@ -1,9 +1,11 @@
+"""
 import logging  # 최상단에 추가
 
 logging.basicConfig(
     level=logging.DEBUG,  # INFO → DEBUG
     format='%(asctime)s | %(levelname)s | %(filename)s: line %(lineno)d | %(message)s'
 )
+"""
 
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
