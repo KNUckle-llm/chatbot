@@ -37,13 +37,19 @@ def route_before_retrieval_node(state: CustomState) -> Literal["retrieve", "rewr
         return "rewrite_question"
     
     # LLM에게 질문 평가
-    eval_prompt = (
-        f"사용자가 보낸 질문이 충분히 구체적이고 명확한가요? "
-        "yes 또는 no로만 답하세요. "
-        "만약 질문이 모호해서 추가 정보가 필요하면 no라고 답하고, "
-        "추가로 어떤 정보를 물어야 하는지도 안내해 주세요.\n"
-        f"질문: {question_text}"
-    )
+    eval_prompt = f"""
+    사용자가 보낸 질문을 평가하세요.
+    공주대학교 SW 사업단 학생들(컴퓨터공학과, 소프트웨어학과, 인공지능학부, 스마트정보기술공학과)을 위한 챗봇입니다.
+    벡터 DB에는 학과정보 (학과별 교과과정표, 학과 교수님 정보, 학과별 공지사항, 학과별 자료/서식, 규정집, SW사업단 소식, SW사업단 혜택, SW사업단 소식, SW사업단 공지사항, TOPCIT같은 대회 일정 등)가 들어 있습니다.
+    - 질문이 대부분 이해 가능하고 핵심 정보가 포함되어 있다면 'yes'
+    - 질문이 불분명하거나 필요한 정보가 거의 없으면 'no'
+
+    질문이 'no'일 경우, 추가로 어떤 정보를 포함하면 충분할지 간단히 안내만 하세요.
+    예시처럼 엄격한 형식이나 세부 템플릿을 요구하지 마세요.
+
+    질문:
+    {question_text}
+    """
     eval_response = model.invoke([SystemMessage(content=eval_prompt)])
     logger.info(f"LLM 응답: {eval_response.content}")
     
