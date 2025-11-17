@@ -66,6 +66,12 @@ def collect_documents_node(state: CustomState):
     max_chars = 12000  # 필요시 조정
     if len(documents) > max_chars:
         documents = documents[-max_chars:]
+        
+    # 로그 확인
+    logger.info("=== Collected Documents (full preview) ===")
+    logger.info(f"Collected {len(tool_texts)} documents:")
+    for i, doc in enumerate(tool_texts):
+        logger.info(f"Document {i+1}: {doc[:500]}...")  # 앞 500자만 표시
 
     return {"documents": documents}
 
