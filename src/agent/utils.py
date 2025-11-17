@@ -5,6 +5,7 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
 from langchain_classic.tools.retriever import create_retriever_tool
 from langchain_core.tools import StructuredTool
+from langgraph.prebuilt import ToolNode
 
 from ..core.config import settings
 from ..core.logger import get_logger
@@ -12,7 +13,9 @@ from ..core.logger import get_logger
 logger = get_logger(__name__)
 
 def initialize_components():
-    # LLM 로드
+    # -----------------------
+    # LLM 설정
+    # -----------------------
     model = ChatOpenAI(
         model=settings["llm"]["model"],
         api_key=settings["openai_api_key"],
@@ -20,35 +23,38 @@ def initialize_components():
         max_retries=settings["llm"]["retry"]
     )
 
-    # 임베딩 로드
+    # -----------------------
+    # 임베딩 & 벡터 DB 설정
+    # -----------------------
     hf_embeddings = HuggingFaceEmbeddings(
         model_name=settings["embedding"]["model"]
     )
 
-    # 벡터 DB
     store = Chroma(
         persist_directory="./chatbot_db",
         embedding_function=hf_embeddings,
     )
 
-    # Retriever 설정
+    # Retriever 생성
     retriever = store.as_retriever(
         search_type="mmr",
-        search_kwargs={"k": 3}  # k=3으로 검색
+        search_kwargs={"k": 3}
     )
 
-    # create_retriever_tool 사용
+    # create_retriever_tool 기반
     base_tool = create_retriever_tool(
         name="retrieve_kongju_national_university_info",
         description="Search vector DB and return content + metadata",
         retriever=retriever
     )
 
-    # 반환값을 collect_documents_node와 호환되도록 가공하는 래퍼
+    # -----------------------
+    # retriever_tool_fn 정의
+    # -----------------------
     def retriever_tool_fn(query: str):
         """
         검색 질의를 받아서 벡터 DB에서 관련 문서를 조회하고
-        content + metadata 형태로 리스트를 반환합니다.
+        content + metadata 형태로 리스트 반환
         """
         logger.info(f"Retriever 호출: {query}")
         docs = base_tool.run(query)
@@ -62,7 +68,34 @@ def initialize_components():
         description="Search vector DB and return content + metadata"
     )
 
-    return model, store, retriever_tool_structured
+    # -----------------------
+    # ToolNode 래핑 (state에 tool 메시지 추가)
+    # -----------------------
+    class RetrieverToolNode(ToolNode):
+        def __init__(self, tool):
+            super().__init__([tool])
+            self.tool = tool
+
+        def run(self, state, *args, **kwargs):
+            # state.user_input에서 질의 가져오기
+            query = getattr(state, "user_input", None)
+            if not query:
+                logger.warning("RetrieverToolNode: state.user_input이 비어있습니다.")
+                return state
+
+            # StructuredTool 실행
+            results = self.tool.run(query)
+
+            # 결과를 state에 tool 메시지로 추가
+            if results:
+                state.add_tool_message(content=results, tool_name=self.tool.name)
+                logger.info(f"RetrieverToolNode: {len(results)}개 결과를 state에 추가")
+            else:
+                logger.warning("RetrieverToolNode: 검색 결과 없음")
+
+            return state
+
+    return model, store, retriever_tool_structured, RetrieverToolNode
 
 
 
