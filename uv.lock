@@ -294,8 +294,13 @@ dependencies = [
     { name = "chromadb" },
     { name = "fastapi", extra = ["standard"] },
     { name = "httpx" },
+    { name = "langchain" },
     { name = "langchain-chroma" },
+    { name = "langchain-community" },
+    { name = "langchain-core" },
     { name = "langchain-huggingface" },
+    { name = "langchain-openai" },
+    { name = "langchain-text-splitters" },
     { name = "langgraph", version = "0.6.9", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.13'" },
     { name = "langgraph", version = "1.0.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.13'" },
     { name = "loguru" },
@@ -309,19 +314,24 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "chromadb", specifier = ">=1.1.0" },
+    { name = "chromadb", specifier = "==1.1.0" },
     { name = "fastapi", extras = ["standard"], specifier = ">=0.116.2" },
     { name = "httpx", specifier = ">=0.28.1" },
-    { name = "langchain-chroma", specifier = ">=0.2.6" },
-    { name = "langchain-huggingface", specifier = ">=0.3.1" },
+    { name = "langchain", specifier = "==0.0.27" },
+    { name = "langchain-chroma", specifier = "==0.2.6" },
+    { name = "langchain-community", specifier = "==0.4.1" },
+    { name = "langchain-core", specifier = "==1.0.3" },
+    { name = "langchain-huggingface", specifier = "==1.0.1" },
+    { name = "langchain-openai", specifier = "==0.3.34" },
+    { name = "langchain-text-splitters", specifier = "==1.0.0" },
     { name = "langgraph", specifier = ">=0.6.9" },
     { name = "loguru", specifier = ">=0.7.3" },
-    { name = "pydantic", specifier = ">=2.0" },
+    { name = "pydantic", specifier = "==2.11.9" },
     { name = "pydantic-settings", specifier = ">=2.10" },
     { name = "pytest", specifier = ">=8.4.2" },
     { name = "ragas", specifier = ">=0.3.6" },
     { name = "rank-bm25", specifier = ">=0.2.2" },
-    { name = "sentence-transformers", specifier = ">=5.1.1" },
+    { name = "sentence-transformers", specifier = "==5.1.1" },
 ]
 
 [[package]]
@@ -1153,16 +1163,12 @@ wheels = [
 name = "langchain"
 version = "0.0.27"
 source = { registry = "https://pypi.org/simple" }
-resolution-markers = [
-    "python_full_version == '3.12.*'",
-    "python_full_version < '3.12'",
-]
 dependencies = [
-    { name = "numpy", marker = "python_full_version < '3.13'" },
-    { name = "pydantic", marker = "python_full_version < '3.13'" },
-    { name = "pyyaml", marker = "python_full_version < '3.13'" },
-    { name = "requests", marker = "python_full_version < '3.13'" },
-    { name = "sqlalchemy", marker = "python_full_version < '3.13'" },
+    { name = "numpy" },
+    { name = "pydantic" },
+    { name = "pyyaml" },
+    { name = "requests" },
+    { name = "sqlalchemy" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/62/53/a975d63f52873daeb2563621240a79ea1368a85a3d94b4231cf750a85048/langchain-0.0.27.tar.gz", hash = "sha256:cdaca3a61eb57a76bef990ce3c4615ac06873e83f100bf9c485f6c36e29ed95c", size = 72304, upload-time = "2022-12-02T15:19:58.961Z" }
 wheels = [
@@ -1170,34 +1176,17 @@ wheels = [
 ]
 
 [[package]]
-name = "langchain"
-version = "1.0.3"
-source = { registry = "https://pypi.org/simple" }
-resolution-markers = [
-    "python_full_version >= '3.13'",
-]
-dependencies = [
-    { name = "langchain-core", marker = "python_full_version >= '3.13'" },
-    { name = "langgraph", version = "1.0.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.13'" },
-    { name = "pydantic", marker = "python_full_version >= '3.13'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/37/08/1708495e03eadbeef5d51e6b7cdcae4752a113a9b6313f46c70e165149c4/langchain-1.0.3.tar.gz", hash = "sha256:f96d8d185cb8cbba9793f5c648e7d5eeec688f8e3778f700d75d89d6570ae11e", size = 444810, upload-time = "2025-10-29T23:15:10.74Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/68/c8/b5dcfdde8b96369e5445f0fbac52fe8495bbd11b23ca83691d90d464eb15/langchain-1.0.3-py3-none-any.whl", hash = "sha256:a7d57964ed16278c991de4ab15516a81937a58c5ac7d7aadccb18431ad8179b2", size = 91970, upload-time = "2025-10-29T23:15:09.198Z" },
-]
-
-[[package]]
 name = "langchain-chroma"
-version = "1.0.0"
+version = "0.2.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "chromadb" },
     { name = "langchain-core" },
     { name = "numpy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/6c/b5/1dfb361793b217c7e8e791edebf5ecbbcc7fed2e9fd998b452c32c701c1f/langchain_chroma-1.0.0.tar.gz", hash = "sha256:ee82c6fbd0c94e5e9942e3b9302f69deea6c58c0e957ff16de6066d896d7a34a", size = 217313, upload-time = "2025-10-17T15:18:54.557Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/dd/94/93ab8f6e96429a60da50eea2d3f3ac988852f6b8da4e817d73ec026a0bd3/langchain_chroma-0.2.6.tar.gz", hash = "sha256:ec5ca0f6f7692ac053741e076ea086c4be0cfcb5846c8693b1bcc3089c88b65e", size = 17296, upload-time = "2025-09-11T19:54:47.991Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/05/fd/36d8d37a257d7f5961cea9ef0e1a9616a4b4fc259cad2cbf02416de90215/langchain_chroma-1.0.0-py3-none-any.whl", hash = "sha256:b7adb991090f066f8d5e746a2d338de3116b192cec3990deef3052b7ea07324c", size = 12458, upload-time = "2025-10-17T15:18:53.325Z" },
+    { url = "https://files.pythonhosted.org/packages/08/bc/591e416a134f9fb766579d1ca9739f32b9d79c607a5053d34ad2b8fa7246/langchain_chroma-0.2.6-py3-none-any.whl", hash = "sha256:d7e10101b0942cd990eedb798c3d85ed3e8415a992c8a388843196f6ab97b41b", size = 12512, upload-time = "2025-09-11T19:54:46.72Z" },
 ]
 
 [[package]]
@@ -2880,8 +2869,7 @@ dependencies = [
     { name = "diskcache" },
     { name = "gitpython" },
     { name = "instructor" },
-    { name = "langchain", version = "0.0.27", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.13'" },
-    { name = "langchain", version = "1.0.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.13'" },
+    { name = "langchain" },
     { name = "langchain-community" },
     { name = "langchain-core" },
     { name = "langchain-openai" },
