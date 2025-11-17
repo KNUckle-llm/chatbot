@@ -3,33 +3,37 @@ import tiktoken
 from langchain_openai import ChatOpenAI
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
-from langchain.tools import tool
+from langchain.tools import BaseTool
 
 from ..core.config import settings
 from ..core.logger import get_logger
 
 logger = get_logger(__name__)
 
-# 1) metadata 포함 retriever tool (BaseTool 미사용)
-class RetrieverWithMetadataTool:
+
+# 1) metadata 포함 retriever tool 직접 구현
+class RetrieverWithMetadataTool(BaseTool):
     name = "retrieve_kongju_national_university_info"
     description = "Search vector DB and return content + metadata"
 
     def __init__(self, retriever):
+        super().__init__()
         self.retriever = retriever
 
-    def run(self, query: str):
+    def _run(self, query: str):
         docs = self.retriever.invoke(query)
+
         results = []
         for d in docs:
             results.append({
                 "content": d.page_content,
-                "metadata": d.metadata  # metadata 유지
+                "metadata": d.metadata   # 🔥 metadata 보존됨
             })
+
         return results
 
-    async def arun(self, query: str):
-        return self.run(query)
+    async def _arun(self, query: str):
+        return self._run(query)
 
 
 def initialize_components():
@@ -58,22 +62,10 @@ def initialize_components():
         search_kwargs={"k": 3}
     )
 
-    # 커스텀 툴 사용
+    # 기존 create_retriever_tool 제거하고 커스텀 툴 사용
     retriever_tool = RetrieverWithMetadataTool(retriever)
 
     return model, store, retriever_tool
-
-
-# initialize_components() 호출
-_, _, retriever_tool = initialize_components()
-
-# callable 형태로 변환
-@tool
-def retrieve_kongju(query: str):
-    """
-    Vector DB에서 검색 후 content + metadata 반환
-    """
-    return retriever_tool.run(query)
 
 
 
