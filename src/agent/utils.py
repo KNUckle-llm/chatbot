@@ -45,6 +45,10 @@ def initialize_components():
 
     # 반환값을 collect_documents_node와 호환되도록 가공하는 래퍼
     def retriever_tool_fn(query: str):
+        """
+        검색 질의를 받아서 벡터 DB에서 관련 문서를 조회하고
+        content + metadata 형태로 리스트를 반환합니다.
+        """
         docs = base_tool.run(query)
         return [{"content": d.page_content, "metadata": d.metadata} for d in docs]
 
