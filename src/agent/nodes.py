@@ -27,6 +27,8 @@ def generate_query_or_response_node(state: CustomState):
     response = (
         model.bind_tools([retriever_tool]).invoke(state["messages"])
     )
+    
+    logger.info(f"Response from model.bind_tools(): {response}")
     return {
         "messages": [response],
     }
@@ -68,10 +70,10 @@ def collect_documents_node(state: CustomState):
         documents = documents[-max_chars:]
         
     # 로그 확인
-    logger.info("=== Collected Documents (full preview) ===")
+    logger.info("=== Log Collected Documents ===")
     logger.info(f"Collected {len(tool_texts)} documents:")
     for i, doc in enumerate(tool_texts):
-        logger.info(f"Document {i+1}: {doc[:500]}...")  # 앞 500자만 표시
+        logger.debug("Document %d full content:\n%s\n%s", i+1, doc, "-"*200)
 
     return {"documents": documents}
 
