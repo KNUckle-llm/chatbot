@@ -15,12 +15,15 @@ VERSION = settings["app"]["version"]
 # 서버 시작 전 이벤트
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    print("🚀 Starting server initialization...")
     checkpointer = InMemorySaver()
+
     graph = build_graph(checkpointer)
 
     app.state.checkpointer = checkpointer
     app.state.graph = graph
     yield
+    print("👋 Shutting down server...")
 
 
 app = FastAPI(
@@ -33,7 +36,10 @@ app = FastAPI(
 # CORS 미들웨어 설정
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", ],  # Next.js 개발 서버 / 배포 도메인
+    allow_origins=[
+        "http://localhost:3000",
+        "https://knuckle-client.vercel.app",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -5,6 +5,8 @@ from pydantic import BaseModel
 class ChatRequest(BaseModel):
     question: str
     thread_id: Optional[str] = None
+    stream: bool = True
+    prompt_variant: str = "user_focused"
 
 
 class ChatResponse(BaseModel):
