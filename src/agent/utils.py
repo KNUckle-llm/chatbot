@@ -3,38 +3,12 @@ import tiktoken
 from langchain_openai import ChatOpenAI
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
-from langchain.tools import BaseTool
+from langchain_classic.tools.retriever import create_retriever_tool
 
 from ..core.config import settings
 from ..core.logger import get_logger
 
 logger = get_logger(__name__)
-
-
-# 1) metadata 포함 retriever tool 직접 구현
-class RetrieverWithMetadataTool(BaseTool):
-    name = "retrieve_kongju_national_university_info"
-    description = "Search vector DB and return content + metadata"
-
-    def __init__(self, retriever):
-        super().__init__()
-        self.retriever = retriever
-
-    def _run(self, query: str):
-        docs = self.retriever.invoke(query)
-
-        results = []
-        for d in docs:
-            results.append({
-                "content": d.page_content,
-                "metadata": d.metadata   # 🔥 metadata 보존됨
-            })
-
-        return results
-
-    async def _arun(self, query: str):
-        return self._run(query)
-
 
 def initialize_components():
     # LLM 로드
@@ -59,13 +33,28 @@ def initialize_components():
     # Retriever 설정
     retriever = store.as_retriever(
         search_type="mmr",
-        search_kwargs={"k": 3}
+        search_kwargs={"k": 3}  # k=3으로 검색
     )
 
-    # 기존 create_retriever_tool 제거하고 커스텀 툴 사용
-    retriever_tool = RetrieverWithMetadataTool(retriever)
+    # create_retriever_tool 사용
+    base_tool = create_retriever_tool(
+        name="retrieve_kongju_national_university_info",
+        description="Search vector DB and return content + metadata",
+        retriever=retriever
+    )
 
-    return model, store, retriever_tool
+    # Tool 실행 시 결과를 content+metadata 구조로 변환
+    def wrapped_tool(query: str):
+        docs = base_tool.run(query)  # 기본 retriever_tool 실행
+        results = []
+        for d in docs:
+            results.append({
+                "content": d.page_content,
+                "metadata": d.metadata
+            })
+        return results
+
+    return model, store, wrapped_tool
 
 
 
