@@ -33,7 +33,7 @@ def route_before_retrieval_node(state: CustomState) -> Literal["retrieve", "rewr
     
     # 1. 질문 명확성 평가
     if not question_text:
-        # 빈 질문이면 바로 HITL
+        logger.info("질문이 비어있음 → rewrite_question")
         return "rewrite_question"
     
     # LLM에게 질문 평가
@@ -43,7 +43,10 @@ def route_before_retrieval_node(state: CustomState) -> Literal["retrieve", "rewr
         f"질문: {question_text}"
     )
     eval_response = model.invoke([SystemMessage(content=eval_prompt)])
+    logger.info(f"LLM 응답: {eval_response.content}")
+    
     unclear = "no" in str(eval_response.content).lower()
+    logger.info(f"질문 모호 여부 판단: {unclear}")
     
     if unclear:
         return "rewrite_question"
