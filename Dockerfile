@@ -6,7 +6,7 @@ ENV WORKSPACE_ROOT=/app \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     UV_LINK_MODE=copy \
-    PYTHONPATH=/app/libs:${PYTHONPATH}
+    PYTHONPATH=/app/libs:/app/src
 
 # 작업 디렉터리 설정
 WORKDIR ${WORKSPACE_ROOT}

@@ -294,6 +294,7 @@ dependencies = [
     { name = "chromadb" },
     { name = "fastapi", extra = ["standard"] },
     { name = "httpx" },
+    { name = "langchain-chroma" },
     { name = "langchain-huggingface" },
     { name = "langgraph", version = "0.6.9", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.13'" },
     { name = "langgraph", version = "1.0.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.13'" },
@@ -311,6 +312,7 @@ requires-dist = [
     { name = "chromadb", specifier = ">=1.1.0" },
     { name = "fastapi", extras = ["standard"], specifier = ">=0.116.2" },
     { name = "httpx", specifier = ">=0.28.1" },
+    { name = "langchain-chroma", specifier = ">=0.2.6" },
     { name = "langchain-huggingface", specifier = ">=0.3.1" },
     { name = "langgraph", specifier = ">=0.6.9" },
     { name = "loguru", specifier = ">=0.7.3" },
@@ -1182,6 +1184,20 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/37/08/1708495e03eadbeef5d51e6b7cdcae4752a113a9b6313f46c70e165149c4/langchain-1.0.3.tar.gz", hash = "sha256:f96d8d185cb8cbba9793f5c648e7d5eeec688f8e3778f700d75d89d6570ae11e", size = 444810, upload-time = "2025-10-29T23:15:10.74Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/68/c8/b5dcfdde8b96369e5445f0fbac52fe8495bbd11b23ca83691d90d464eb15/langchain-1.0.3-py3-none-any.whl", hash = "sha256:a7d57964ed16278c991de4ab15516a81937a58c5ac7d7aadccb18431ad8179b2", size = 91970, upload-time = "2025-10-29T23:15:09.198Z" },
+]
+
+[[package]]
+name = "langchain-chroma"
+version = "1.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "chromadb" },
+    { name = "langchain-core" },
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/6c/b5/1dfb361793b217c7e8e791edebf5ecbbcc7fed2e9fd998b452c32c701c1f/langchain_chroma-1.0.0.tar.gz", hash = "sha256:ee82c6fbd0c94e5e9942e3b9302f69deea6c58c0e957ff16de6066d896d7a34a", size = 217313, upload-time = "2025-10-17T15:18:54.557Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/05/fd/36d8d37a257d7f5961cea9ef0e1a9616a4b4fc259cad2cbf02416de90215/langchain_chroma-1.0.0-py3-none-any.whl", hash = "sha256:b7adb991090f066f8d5e746a2d338de3116b192cec3990deef3052b7ea07324c", size = 12458, upload-time = "2025-10-17T15:18:53.325Z" },
 ]
 
 [[package]]
