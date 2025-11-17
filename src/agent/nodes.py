@@ -1,5 +1,4 @@
 from typing import Literal
-from pydantic import BaseModel, Field
 
 from langchain_core.messages import SystemMessage, HumanMessage, RemoveMessage
 
@@ -16,93 +15,135 @@ model, store, retriever_tool = initialize_components()
 
 
 def language_detection_node(state: CustomState):
+    logger.info("🔹 [language_detection_node] 시작")
     message = str(state.get("messages")[-1].content)
     return {
         "language": detect_language(message)
     }
 
-
-def generate_query_or_response_node(state: CustomState):
-    retriever_response = retriever_tool.invoke({
-        "query": state["messages"][-1].content
-    })
-    response = (
-        model.bind_tools([retriever_tool]).invoke(state["messages"])
+def route_before_retrieval_node(state: CustomState) -> Literal["retrieve", "rewrite_question"]:
+    """
+    1. 질문 명확성 평가
+    2. 불명확하면 rewrite_question(HITL)로 이동
+    3. 명확하면 retrieve 경로로 진행 (Tool 호출/문서 존재 여부는 나중에 판단)
+    """
+    logger.info("🔹 [route_before_retrieval_node] 시작")
+    message = state.get("messages")[-1]
+    question_text = str(message.content).strip()
+    
+    # 1. 질문 명확성 평가
+    if not question_text:
+        # 빈 질문이면 바로 HITL
+        return "rewrite_question"
+    
+    # LLM에게 질문 평가
+    eval_prompt = (
+        f"사용자가 보낸 질문이 충분히 구체적이고 명확한가요? "
+        "yes 또는 no로만 답하세요. 다만, 조금 모호해도 yes로 통과시켜 주세요.\n"
+        f"질문: {question_text}"
     )
-    return {
-        "messages": [response],
-        "documents": [retriever_response]
-    }
+    eval_response = model.invoke([SystemMessage(content=eval_prompt)])
+    unclear = "no" in str(eval_response.content).lower()
+    
+    if unclear:
+        return "rewrite_question"
+    
+    # 명확하면 바로 retrieve 경로
+    return "retrieve"
+    
 
+def collect_documents_node(state: CustomState):
+    logger.info("🔹 [collect_documents_node] 시작")
 
-class GradeDocuments(BaseModel):
-    """Grade documents using a binary score for relevance check."""
+    # ToolNode 메시지 필터링
+    tool_msgs = [
+        msg for msg in state.get("messages", [])
+        if getattr(msg, "role", None) == "tool"
+    ]
 
-    binary_score: str = Field(
-        description=(
-            "Relevance score: 'yes' if relevant, or 'no' if not relevant"
-        )
-    )
+    # 검색 결과 없음 → 질문이 너무 모호한 경우
+    if not tool_msgs:
+        logger.info("No tool outputs found. Redirecting to rewrite_question.")
+        return {"next_node": "rewrite_question"}
 
+    collected = []
 
-def grade_documents_node(
-    state: CustomState
-) -> Literal["generate", "rewrite_question"]:
-    question = state["messages"][-1].content
-    context = state.get("documents")
+    for msg in tool_msgs:
+        try:
+            # retriever_tool 이 반환한 리스트 그대로 있음
+            docs = msg.content   # 이미 [{"content":..., "metadata":...}, ...]
+            
+            # 리스트인지 확인
+            if isinstance(docs, list):
+                collected.extend(docs)
+            else:
+                logger.warning("Tool output is not a list. Skipping.")
+        except Exception as e:
+            logger.error(f"Failed to parse tool output: {e}")
 
-    prompt = GRADE_PROMPT.format(question=question, context=context)
-    response = (
-        model.with_structured_output(GradeDocuments).invoke(
-            [{"role": "system", "content": prompt}]
-        )
-    )
+    # 최대 3개만 유지 (retriever 기본 k=3이지만 혹시 중복도 대비)
+    collected = collected[:3]
 
-    score = response.binary_score.strip().lower()
-    return "generate" if score == "yes" else "rewrite_question"
+    logger.info(f"Collected {len(collected)} documents.")
+
+    return {"documents": collected}
+
 
 
 def rewrite_question_node(state: CustomState):
-    language = state.get("language", "ko")
+    logger.info("🔹 [rewrite_question_node] 시작")
+    logger.info("Rewriting question for HITL...")
+    language = state.get("language")
     prompt = HITL_PROMPT.format(language=language)
     response = model.invoke([{"role": "system", "content": prompt}])
     return {"messages": [response]}
 
 
 def generation_node(state: CustomState):
-    # state에서 language 가져오기
+    logger.info("🔹 [generation_node] 시작")
+
+    # 언어 정보 가져오기
     language = state.get("language")
+    user_message = state["messages"][-1].content
 
-    # 검색된 문서 state에서 documents 가져오기
-    documents = state.get("documents")
+    # 문서 가져오기
+    documents = state.get("documents", [])
 
+    # 언어 안내 메시지
     language_message = (
-        f"Answer the question in {language}."
-        "If en, use English; if ko, use Korean.\n"
+        f"Answer the question in {language}. "
+        "If en, answer in English; if ko, answer in Korean.\n\n"
     )
 
-    if documents:
-        system_message = SYSTEM_PROMPT.format(
-            documents=documents, input=state["messages"][-1].content
+    # 문서 포맷팅
+    formatted_docs = ""
+    for idx, doc in enumerate(documents, start=1):
+        content = doc.get("content", "")
+        url = doc.get("metadata", {}).get("url", "URL 없음")
+        formatted_docs += (
+            f"   문서 {idx}:\n"
+            f"       내용: {content}\n"
+            f"       출처: {url}\n\n"
         )
 
-    else:
-        summarization = state.get("summarization")
-        messages = state.get("messages")
+    # SYSTEM_PROMPT에 문서와 사용자 질문 삽입
+    system_message = SYSTEM_PROMPT.format(
+        documents=formatted_docs,
+        input=user_message
+    )
 
-        system_message = (
-            "Answer based on conversation history and summary."
-            f"Conversation Summary: {summarization}\n"
-            f"messages: {messages}\n"
-        )
+    # LLM 호출
+    final_message = language_message + system_message
+    response = model.invoke([SystemMessage(content=final_message)])
 
-    message = language_message + system_message
-    response = model.invoke([SystemMessage(content=message)])
-    return {"messages": state.get("messages") + [response]}
+    return {"messages": state["messages"] + [response]}
+
 
 
 def summarization_node(state: CustomState):
+    logger.info("🔹 [summarization_node] 시작")
     summarization = state.get("summarization")
+    logger.info(f"🔹 이전 요약 길이: {len(summarization)}")
 
     if summarization:
         summary_message = (
