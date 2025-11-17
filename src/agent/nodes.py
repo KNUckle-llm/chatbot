@@ -38,14 +38,16 @@ def route_before_retrieval_node(state: CustomState) -> Literal["retrieve", "rewr
     
     # LLM에게 질문 평가
     eval_prompt = f"""
-    사용자가 보낸 질문을 평가하세요.
-    공주대학교 SW 사업단 학생들(컴퓨터공학과, 소프트웨어학과, 인공지능학부, 스마트정보기술공학과)을 위한 챗봇입니다.
-    벡터 DB에는 학과정보 (학과별 교과과정표, 학과 교수님 정보, 학과별 공지사항, 학과별 자료/서식, 규정집, SW사업단 소식, SW사업단 혜택, SW사업단 소식, SW사업단 공지사항, TOPCIT같은 대회 일정 등)가 들어 있습니다.
-    - 질문이 대부분 이해 가능하고 핵심 정보가 포함되어 있다면 'yes'
-    - 질문이 불분명하거나 필요한 정보가 거의 없으면 'no'
+    사용자가 보낸 질문을 평가하세요. 
+    공주대학교 SW 사업단 학생들을 위한 챗봇입니다. 
+    벡터 DB에는 학과 정보(교과과정표, 교수님 정보, 공지사항, 자료/서식, 규정집, SW사업단 소식 등)가 포함되어 있습니다.
 
-    질문이 'no'일 경우, 추가로 어떤 정보를 포함하면 충분할지 간단히 안내만 하세요.
-    예시처럼 엄격한 형식이나 세부 템플릿을 요구하지 마세요.
+    - 질문이 핵심 정보를 충분히 담고 있어 바로 검색·답변이 가능하면 'yes'라고 답하세요.
+    - 질문이 일부 핵심 정보를 포함하지 않더라도, 답변이 가능하면 'yes'라고 답할 수 있습니다.
+    - 질문이 불명확하거나 핵심 정보가 부족하면 'no'라고 답하고, **왜 'no'인지 간단히 이유를 설명**하세요.
+    - 추가로 {question_text}에 대해서 사용자가 어떤식으로 질문하면 좋은지 예시를 3가지 간단히 안내하세요.
+    - 핵심 정보란 '특정 대상', '학과/분야', '대회 이름/주제' 등을 의미합니다.
+    - 너무 짧거나 맥락 없는 질문(예: "알려줘", "언제야?", "홍길동")는 반드시 'no'입니다.
 
     질문:
     {question_text}
@@ -113,7 +115,7 @@ def rewrite_question_node(state: CustomState):
     prompt = HITL_PROMPT.format(language=language)
     # 역질문 안내 메시지 추가
     if unclear_info:
-        prompt += f"\n\n질문이 모호한 이유 : {unclear_info}"
+        prompt += f"\n\n사용자의 모호한 질문에 대한 역질문을 제공합니다.\n{unclear_info}"
 
     response = model.invoke([{"role": "system", "content": prompt}])
     return {"messages": [response]}

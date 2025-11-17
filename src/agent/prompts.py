@@ -40,8 +40,6 @@ GRADE_PROMPT = (
 )
 
 HITL_PROMPT = (
-    "Answer the following sentence:\n\n"
-    "제공하신 질문에 대한 답변을 드리기 위해 추가 정보가 필요합니다. 학과, 연도 등 세부 정보를 포함하여 질문을 구체적으로 작성해 주세요.\n\n"
     "Answer in {language}. If 'ko', use Korean. If 'en', use English."
     "Do not answer anything else."
 )

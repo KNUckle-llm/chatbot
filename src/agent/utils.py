@@ -4,6 +4,7 @@ from langchain_openai import ChatOpenAI
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
 from langchain_classic.tools.retriever import create_retriever_tool
+from langchain_core.tools import StructuredTool
 
 from ..core.config import settings
 from ..core.logger import get_logger
@@ -49,10 +50,19 @@ def initialize_components():
         검색 질의를 받아서 벡터 DB에서 관련 문서를 조회하고
         content + metadata 형태로 리스트를 반환합니다.
         """
+        logger.info(f"Retriever 호출: {query}")
         docs = base_tool.run(query)
+        logger.info(f"Retriever 결과: {len(docs)}개")
         return [{"content": d.page_content, "metadata": d.metadata} for d in docs]
 
-    return model, store, retriever_tool_fn
+    # StructuredTool로 감싸기
+    retriever_tool_structured = StructuredTool.from_function(
+        func=retriever_tool_fn,
+        name="retrieve_kongju_national_university_info",
+        description="Search vector DB and return content + metadata"
+    )
+
+    return model, store, retriever_tool_structured
 
 
 
