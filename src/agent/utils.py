@@ -43,18 +43,20 @@ def initialize_components():
         retriever=retriever
     )
 
-    # Tool 실행 시 결과를 content+metadata 구조로 변환
-    def wrapped_tool(query: str):
-        docs = base_tool.run(query)  # 기본 retriever_tool 실행
-        results = []
-        for d in docs:
-            results.append({
-                "content": d.page_content,
-                "metadata": d.metadata
-            })
-        return results
+    # 반환값을 collect_documents_node와 호환되도록 가공하는 래퍼
+    def retriever_tool_with_metadata(query: str):
+        """
+        Search vector DB and return top 3 documents with content and metadata.
 
-    return model, store, wrapped_tool
+        Args:
+            query (str): 검색 질의
+        Returns:
+            List[dict]: [{"content": ..., "metadata": ...}, ...]
+        """
+        docs = base_tool.run(query)  # Document 객체 리스트
+        return [{"content": d.page_content, "metadata": d.metadata} for d in docs]
+
+    return model, store, retriever_tool_with_metadata
 
 
 
