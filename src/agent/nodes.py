@@ -39,7 +39,9 @@ def route_before_retrieval_node(state: CustomState) -> Literal["retrieve", "rewr
     # LLM에게 질문 평가
     eval_prompt = (
         f"사용자가 보낸 질문이 충분히 구체적이고 명확한가요? "
-        "yes 또는 no로만 답하세요. 다만, 조금 모호해도 yes로 통과시켜 주세요.\n"
+        "yes 또는 no로만 답하세요. "
+        "만약 질문이 모호해서 추가 정보가 필요하면 no라고 답하고, "
+        "추가로 어떤 정보를 물어야 하는지도 안내해 주세요.\n"
         f"질문: {question_text}"
     )
     eval_response = model.invoke([SystemMessage(content=eval_prompt)])
@@ -49,9 +51,12 @@ def route_before_retrieval_node(state: CustomState) -> Literal["retrieve", "rewr
     logger.info(f"질문 모호 여부 판단: {unclear}")
     
     if unclear:
+        logger.info("→ rewrite_question 경로 선택")
+        state["unclear_reason"] = str(eval_response.content)
         return "rewrite_question"
     
     # 명확하면 바로 retrieve 경로
+    logger.info("→ retrieve 경로 선택")
     return "retrieve"
     
 
@@ -97,7 +102,13 @@ def rewrite_question_node(state: CustomState):
     logger.info("🔹 [rewrite_question_node] 시작")
     logger.info("Rewriting question for HITL...")
     language = state.get("language")
+    unclear_info = state.get("unclear_reason", "")
+    
     prompt = HITL_PROMPT.format(language=language)
+    # 역질문 안내 메시지 추가
+    if unclear_info:
+        prompt += f"\n\n질문이 모호한 이유 : {unclear_info}"
+
     response = model.invoke([{"role": "system", "content": prompt}])
     return {"messages": [response]}
 
