@@ -24,7 +24,7 @@ def initialize_components():
     )
 
     store = Chroma(
-        persist_directory="./chatbot_20251108",
+        persist_directory="./chatbot_db",
         embedding_function=hf_embeddings,
     )
 
