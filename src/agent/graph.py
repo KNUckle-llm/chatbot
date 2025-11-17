@@ -1,6 +1,7 @@
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import ToolNode
+from .utils import retrieve_kongju
 
 from ..core.logger import get_logger
 from .state import CustomState
@@ -25,7 +26,7 @@ def build_graph(checkpointer, store=None) -> CompiledStateGraph:
     
     # 노드 등록
     builder.add_node("detect_language", language_detection_node)
-    builder.add_node("retrieve", ToolNode([retriever_tool]))
+    builder.add_node("retrieve", ToolNode([retrieve_kongju]))
     builder.add_node("collect_documents", collect_documents_node)
     builder.add_node("rewrite_question", rewrite_question_node)
     builder.add_node("generate", generation_node)

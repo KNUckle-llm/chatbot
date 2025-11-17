@@ -3,6 +3,7 @@ import tiktoken
 from langchain_openai import ChatOpenAI
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
+from langchain.tools import tool
 
 from ..core.config import settings
 from ..core.logger import get_logger
@@ -61,6 +62,19 @@ def initialize_components():
     retriever_tool = RetrieverWithMetadataTool(retriever)
 
     return model, store, retriever_tool
+
+
+# initialize_components() 호출
+_, _, retriever_tool = initialize_components()
+
+# callable 형태로 변환
+@tool
+def retrieve_kongju(query: str):
+    """
+    Vector DB에서 검색 후 content + metadata 반환
+    """
+    return retriever_tool.run(query)
+
 
 
 def detect_language(text: str, threshold: float = 0.6) -> Literal["ko", "en"]:
