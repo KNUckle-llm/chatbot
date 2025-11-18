@@ -24,7 +24,7 @@ def build_graph(checkpointer, store=None) -> CompiledStateGraph:
     
     # 노드 등록
     builder.add_node("detect_language", language_detection_node)
-    builder.add_node("retrieve", RetrieverToolNode([retriever_tool_structured]))
+    builder.add_node("retrieve", RetrieverToolNode(retriever_tool_structured))
     builder.add_node("collect_documents", collect_documents_node)
     builder.add_node("rewrite_question", rewrite_question_node)
     builder.add_node("generate", generation_node)
