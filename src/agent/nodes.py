@@ -24,7 +24,7 @@ def generate_query_or_response_node(state: CustomState):
     prompt = (
         f"질문: {last_msg.content}\n"
         "이 질문이 챗봇 사용자와 챗봇의 벡터 DB에 저장된 문서 정보를 기준으로 적절하면 'yes', 부적절하면 'no'로 판단하세요."
-        "반드시 영어로 yes/no 중에 하나가 답변으로 있어야 합니다."
+        "반드시 맨 처음 시작으로 영어로 yes/no 중에 하나가 답변으로 있어야 합니다."
         "'no'라면 부적절한 이유를 1~2문장으로 구체적으로 작성하세요.\n"
         "챗봇의 사용자는 SW사업단 소속 학부생으로 컴퓨터공학과, 소프트웨어학과, 인공지능학부, 스마트정보기술공학과가 있다.\n"
         "챗봇의 벡터 DB에는 학과별 교수님 공식정보(이메일, 전화번호), 학과별 교과과정표, 학과별 공지사항, 학과별 자료/서식, 학과별 규정이 있고 SW사업단 소식, SW사업단 공지사항, SW사업단 대회일정 등이 존재한다.\n"
@@ -46,7 +46,11 @@ def generate_query_or_response_node(state: CustomState):
     logger.info("===================================")
 
     state.get("messages").append(response)
-    return {"messages": state.get("messages")}
+    return {
+        "messages": state.get("messages"),
+        "question_appropriate": state.get("question_appropriate"),
+        "question_reason": state.get("question_reason", None)
+    }
 
 
 
@@ -56,7 +60,7 @@ def route_before_retrieval_node(state: CustomState) -> Literal["retrieve", "rewr
     is_appropriate = state.get("question_appropriate")
     if is_appropriate is None:
         logger.warning("question_appropriate가 None입니다. 기본값 False로 처리합니다.")
-        is_appropriate = True
+        is_appropriate = False
         state["question_appropriate"] = is_appropriate
 
     logger.info(f"Routing decision - question_appropriate: {is_appropriate}")
@@ -69,12 +73,21 @@ def retrieve_documents_node(state: CustomState, max_docs: int = 3):
     last_msg = state.get("messages")[-1]
     query = str(last_msg.content).strip()
 
-    # retriever_tool 내부 retriever 직접 호출
-    docs = retriever_tool.retriever.get_relevant_documents(query)
+    # store에서 similarity_search로 바로 검색
+    docs = store.similarity_search(query, k=max_docs)
 
-    # 최대 max_docs 개수 제한
-    docs = docs[:max_docs]
-    state["documents"] = [{"content": d.page_content} for d in docs]
+    state["documents"] = [
+        {
+            "content": d.page_content,
+            "metadata": {
+                "file_name": d.metadata.get("file_name"),
+                "department": d.metadata.get("department"),
+                "url": d.metadata.get("url"),
+                "date": d.metadata.get("date")
+            }
+        }
+        for d in docs
+    ]
 
     logger.info(f"Retrieved {len(docs)} documents for query: {query}")
     return {"documents": state["documents"]}
@@ -115,8 +128,17 @@ def generation_node(state: CustomState):
     last_msg = state.get("messages")[-1]
 
     # 문서 내용을 정리해서 문자열로 만듦
-    docs_text = "\n".join([f"문서 {i+1}:\n    내용: {d['content']}" for i, d in enumerate(documents)])
-
+    #docs_text = "\n".join([f"문서 {i+1}:\n    내용: {d['content']}" for i, d in enumerate(documents)])
+    docs_text = "\n\n".join([
+        f"문서 {i+1}\n"
+        f"본문 내용: {d['content']}\n"
+        f"제목: {d.get('metadata', {}).get('file_name', '')}\n"
+        f"부서: {d.get('metadata', {}).get('department', '')}\n"
+        f"작성일: {d.get('metadata', {}).get('date', '')}"
+        f"출처: {d.get('metadata', {}).get('url', '')}\n"
+        for i, d in enumerate(documents)
+    ])
+    
     # 시스템 메시지 생성
     system_message = SYSTEM_PROMPT.format(
         input=last_msg.content,
