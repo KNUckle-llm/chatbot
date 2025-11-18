@@ -28,15 +28,13 @@ def build_graph(checkpointer, store=None) -> CompiledStateGraph:
     builder.add_node("detect_language", language_detection_node)
     builder.add_node("generate_query_or_respond",
                      generate_query_or_response_node)
-    
+    """
     # retrieve ToolNode
     def retrieve_node(state):
-        logger.info(">>> retrieve_node 실행 직전")
         node = RetrieverToolNode(retriever_tool_structured)
-        new_state = node.run(state)
-        logger.info(f">>> retrieve_node 완료: documents={len(new_state.get('documents', []))}")
-        return new_state
-    builder.add_node("retrieve", retrieve_node)
+        return node.run(state)
+    """
+    builder.add_node("retrieve", RetrieverToolNode(retriever_tool_structured))
 
     builder.add_node("collect_documents", collect_documents_node)
     builder.add_node("rewrite_question", rewrite_question_node)
