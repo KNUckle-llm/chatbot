@@ -49,6 +49,7 @@ def collect_documents_node(state: CustomState):
     """
     documents: List[dict] = state.get("documents") or []
     if not documents:
+        logger.warning("collect_documents_node: documents 비어 있음")
         return {"formatted_documents": ""}
 
     formatted_docs = []

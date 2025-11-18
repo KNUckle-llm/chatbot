@@ -58,8 +58,10 @@ def initialize_components():
         """
         logger.info(f"Retriever 호출: {query}")
         docs = base_tool.run(query)
-        logger.info(f"Retriever 결과: {len(docs)}개")
-        return [{"content": d.page_content, "metadata": d.metadata} for d in docs]
+        top_docs = docs[:3]
+        
+        logger.info(f"Retriever 결과: {len(top_docs)}개")
+        return [{"content": d.page_content, "metadata": d.metadata} for d in top_docs]
 
     # StructuredTool로 감싸기
     retriever_tool_structured = StructuredTool.from_function(
@@ -92,7 +94,7 @@ def initialize_components():
                 # state.documents에 추가
                 existing_docs = state.get("documents") or []
                 state.set("documents", existing_docs + results)
-                logger.info(f"RetrieverToolNode: {len(results)}개 결과를 state에 추가")
+                logger.info(f"RetrieverToolNode: 기존 문서 {len(existing_docs)}개, 추가 {len(results)}개")
             else:
                 logger.warning("RetrieverToolNode: 검색 결과 없음")
 
