@@ -31,7 +31,7 @@ def initialize_components():
     )
 
     store = Chroma(
-        ppersist_directory="/app/src/agent/chatbot_db",
+        persist_directory="/app/src/agent/chatbot_db",
         embedding_function=hf_embeddings,
     )
 
