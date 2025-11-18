@@ -18,13 +18,13 @@ logger = get_logger(__name__)
 
 def build_graph(checkpointer, store=None) -> CompiledStateGraph:
     builder = StateGraph(CustomState)
-    _, _, retriever_tool_structured = initialize_components()
+    model, store, retriever_tool_structured, RetrieverToolNode = initialize_components()
 
     logger.info("Generating Node...")
     
     # 노드 등록
     builder.add_node("detect_language", language_detection_node)
-    builder.add_node("retrieve", ToolNode([retriever_tool_structured]))
+    builder.add_node("retrieve", RetrieverToolNode([retriever_tool_structured]))
     builder.add_node("collect_documents", collect_documents_node)
     builder.add_node("rewrite_question", rewrite_question_node)
     builder.add_node("generate", generation_node)

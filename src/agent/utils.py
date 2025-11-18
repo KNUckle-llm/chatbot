@@ -77,10 +77,11 @@ def initialize_components():
             self.tool = tool
 
         def run(self, state, *args, **kwargs):
-            # state.user_input에서 질의 가져오기
-            query = getattr(state, "user_input", None)
+            # H전체 메시지 중 Human Message
+            query = str(state.get("messages")[-1].content)
+            
             if not query:
-                logger.warning("RetrieverToolNode: state.user_input이 비어있습니다.")
+                logger.warning("RetrieverToolNode: 사용자 질문 query가 비어있습니다.")
                 return state
 
             # StructuredTool 실행
