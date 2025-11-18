@@ -6,6 +6,7 @@ from ..core.logger import get_logger
 from .state import CustomState
 from .utils import initialize_components
 from .nodes import (
+    generate_query_or_response_node,
     language_detection_node,
     route_before_retrieval_node,
     collect_documents_node,
@@ -23,9 +24,11 @@ def build_graph(checkpointer, store=None) -> CompiledStateGraph:
     # -----------------------
     # 노드 등록
     # -----------------------
+    logger.info("Generating Node...")
     builder.add_node("detect_language", language_detection_node)
-    builder.add_node("route_before_retrieval", route_before_retrieval_node)
-
+    builder.add_node("generate_query_or_respond",
+                     generate_query_or_response_node)
+    
     # retrieve ToolNode
     def retrieve_node(state):
         node = RetrieverToolNode(retriever_tool_structured)
@@ -36,41 +39,28 @@ def build_graph(checkpointer, store=None) -> CompiledStateGraph:
     builder.add_node("rewrite_question", rewrite_question_node)
     builder.add_node("generate", generation_node)
     builder.add_node("summarize", summarization_node)
+    logger.info("Node generation complete..!")
 
-    # -----------------------
-    # 노드 연결 (Edges)
-    # -----------------------
+    logger.info("Adding Edges...")
     builder.add_edge(START, "detect_language")
-    builder.add_edge("detect_language", "route_before_retrieval")
-
-    # route_before_retrieval 분기
+    builder.add_edge("detect_language", "generate_query_or_respond")
     builder.add_conditional_edges(
-        "route_before_retrieval",
+        "generate_query_or_respond",
         route_before_retrieval_node,
-        {True: "rewrite_question", False: "retrieve"}
+        {
+            "retrieve": "retrieve",
+            "rewrite_question": "rewrite_question",
+        }
     )
-
-    # retrieve → collect_documents
     builder.add_edge("retrieve", "collect_documents")
-
-    # collect_documents 분기
-    builder.add_conditional_edges(
-        "collect_documents",
-        lambda state: bool(state.get("documents")),
-        {True: "generate", False: "rewrite_question"}
-    )
-
-    # generate → summarize
+    builder.add_edge("collect_documents", "generate")
     builder.add_edge("generate", "summarize")
-
-    # rewrite_question → summarize
-    builder.add_edge("rewrite_question", "summarize")
-
-    # 종료
+    builder.add_edge("rewrite_question", END)
     builder.add_edge("summarize", END)
+    logger.info("Edges added successfully..!")
 
     graph = builder.compile(checkpointer=checkpointer, store=store)
-    logger.info("StateGraph compiled successfully!")
+    logger.info("Successfully compiled the state graph :D")
     return graph
 
 

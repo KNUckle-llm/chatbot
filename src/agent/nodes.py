@@ -1,113 +1,123 @@
-from typing import Literal
-from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+from typing import List, Literal
+
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, RemoveMessage
+
+from src.agent.state import CustomState
+from src.agent.utils import (
+    initialize_components,
+    detect_language,
+)
+from src.agent.prompts import GRADE_PROMPT, HITL_PROMPT, SYSTEM_PROMPT
 from ..core.logger import get_logger
-from .state import CustomState
-from .utils import initialize_components, detect_language
-from .prompts import SYSTEM_PROMPT, HITL_PROMPT
 
 logger = get_logger(__name__)
-model, store, retriever_tool_structured, RetrieverToolNode = initialize_components()
+model, store, retriever_tool = initialize_components()
 
-
-# ---------------------------
-# 노드 정의
-# ---------------------------
 
 def language_detection_node(state: CustomState):
-    logger.info("🔹 [language_detection_node] 실행")
-    user_message = state.get("messages")[-1]
-    state.set("language", detect_language(str(user_message.content)))
-    return state
+    logger.info("Detecting language...")
+    message = str(state.get("messages")[-1].content)
+    return {
+        "language": detect_language(message)
+    }
 
-def route_before_retrieval_node(state: CustomState) -> bool:
-    """질문이 모호하면 True, 명확하면 False (rewrite_question vs retrieve)"""
-    messages = state.get("messages", [])
-    user_message = next((msg for msg in reversed(messages) if getattr(msg, "role", None) == "user"), None)
-    question_text = str(user_message.content).strip() if user_message else ""
-    if not question_text:
-        state.set("unclear_reason", "질문이 비어있습니다. 명확하게 질문해 주세요.")
-        return True
-    
-    # LLM에게 질문 평가
-    eval_prompt = f"""
-    사용자가 보낸 질문을 평가하여 반드시 'yes' 또는 'no'로 판단하세요. 
-    - 'yes'는 질문이 충분히 구체적이거나 일부 정보가 부족해도 답변 가능할 때.  
-    - 'no'는 질문이 챗봇 사용자, 챗봇 제공 정보와 전혀 관련이 없거나 불명확하고 질문이 너무 짧을 때.
-         이 경우, 들어온 질문인 "{question_text}"에 기반하여 아래 정보를 근거로 역질문을 생성합니다.
-    
-    챗봇의 사용자 : 공주대학교 SW 사업단 주관학과 학생들(컴퓨터공학과, 소프트웨어학과, 인공지능학부, 스마트정보기술공학과)
-    챗봇이 제공하는 정보 : 학과 정보(학과별 교과과정표, 학과별 교수님 정보, 학과별 공지사항, 학과별 자료/서식, SW사업단 소식, SW사업단 혜택, SW사업단 공지사항, SW사업단 대회정보)
+
+def generate_query_or_response_node(state: CustomState):
     """
-    try:
-        eval_response = model.invoke([SystemMessage(content=eval_prompt)])
-        unclear = "no" in str(eval_response.content).lower()
-        if unclear:
-            state.set("unclear_reason", "질문이 명확하지 않습니다.")
-        return unclear
-    except Exception as e:
-        logger.error(f"LLM 평가 중 예외 발생: {e}")
-        state.set("unclear_reason", "질문 평가 실패")
-        return True
+    초기 LLM 메시지 생성 (단순 복사)
+    """
+    logger.info("Generating initial LLM message...")
+    last_msg = state.get("messages")[-1]
+    content = getattr(last_msg, "content", str(last_msg))
+    response = HumanMessage(content=content)
+    return {"messages": [response]}
 
 
-def collect_documents_node(state: CustomState) -> bool:
-    """문서 존재 여부 반환(True=없음 → rewrite, False=있음 → generate)"""
-    tool_msgs = [msg for msg in state.get("messages", []) if getattr(msg, "role", None) == "tool"]
-    if not tool_msgs:
-        state.set("documents", [])
-        return True
-    collected = []
-    for msg in tool_msgs:
-        docs = getattr(msg, "content", [])
-        if isinstance(docs, list):
-            collected.extend(docs)
-    state.set("documents", collected[:3])
-    return len(collected) == 0
+def route_before_retrieval_node(state: CustomState) -> Literal["retrieve", "rewrite_question"]:
+    """
+    테스트용: 항상 retrieve 단계로 진행
+    목적: 이 메시지를 기반으로 검색 필요 여부 판단
+    rewrite 역질문 할지를 여기서 구현
+    """
+    return "retrieve"
 
+
+def collect_documents_node(state: CustomState):
+    """
+    state['documents']에 저장된 문서들을 포맷
+    generate 노드에서 바로 사용할 수 있도록 반환
+    """
+    documents: List[dict] = state.get("documents") or []
+    if not documents:
+        return {"formatted_documents": ""}
+
+    formatted_docs = []
+    for idx, doc in enumerate(documents[:3], start=1):  # 최대 3개
+        content = doc.get("content", "")
+        metadata = doc.get("metadata", {})
+        source = metadata.get("url", "알 수 없음")
+        formatted_docs.append(
+            f"문서 {idx}:\n"
+            f"    내용: {content}\n"
+            f"    출처: {source}\n"
+        )
+    return {"formatted_documents": "\n".join(formatted_docs)}
 
 
 def rewrite_question_node(state: CustomState):
-    logger.info("🔹 [rewrite_question_node] HITL")
-    unclear_info = state.get("unclear_reason", "질문을 명확하게 해주세요.")
-    response_message = AIMessage(content=unclear_info)
-    state.set("messages", state.get("messages") + [response_message])
-    return state
+    logger.info("Rewriting question for HITL...")
+    language = state.get("language", "ko")
+    prompt = HITL_PROMPT.format(language=language)
+    response = model.invoke([SystemMessage(content=prompt)])
+    return {"messages": [response]}
 
 
 def generation_node(state: CustomState):
-    logger.info("🔹 [generation_node] 실행")
-    messages = state.get("messages")
-    user_message_obj = next((msg for msg in reversed(messages) if getattr(msg, "role", None) == "user"), None)
-    if not user_message_obj:
-        return state
-    user_message = user_message_obj.content
+    """
+    state['messages']와 state['documents'] 기반으로 답변 생성
+    """
+    logger.info("Generating answer...")
     language = state.get("language")
-    documents = state.get("documents", [])
+    user_message = state.get("messages")[-1].content
+    documents = state.get("documents") or []
 
-    formatted_docs = ""
-    for idx, doc in enumerate(documents, start=1):
-        content = doc.get("content", "")
-        url = doc.get("metadata", {}).get("url", "URL 없음")
-        formatted_docs += f"문서 {idx}:\n  내용: {content}\n  출처: {url}\n\n"
+    if documents:
+        formatted_docs = collect_documents_node(state)["formatted_documents"]
+        system_prompt = SYSTEM_PROMPT.format(input=user_message, documents=formatted_docs)
+    else:
+        summarization = state.get("summarization")
+        system_prompt = (
+            "Answer based on conversation history and summary.\n"
+            f"Conversation Summary: {summarization}\n"
+            f"Messages: {state.get('messages')}\n"
+        )
 
-    system_message = SYSTEM_PROMPT.format(documents=formatted_docs, input=user_message)
-    final_message = f"Answer in {language}.\n\n" + system_message
-    response = model.invoke([SystemMessage(content=final_message)])
-    state.set("messages", messages + [AIMessage(content=response.content)])
-    return state
-
+    message = f"Answer the question in {language}. If en, use English; if ko, use Korean.\n" + system_prompt
+    response = model.invoke([SystemMessage(content=message)])
+    return {"messages": state.get("messages") + [response]}
 
 
 def summarization_node(state: CustomState):
-    logger.info("🔹 [summarization_node] 실행")
-    messages = state.get("messages")
-    summarization = state.get("summarization") or ""
-    summary_message = (
-        f"This is a summary of the conversation to date:\n{summarization}\nExtend with new messages above:"
-        if summarization else
-        "Create a summary of the conversation above:"
-    )
-    response = model.invoke(messages + [HumanMessage(content=summary_message)])
-    state.set("summarization", str(response.content).strip())
-    return state
+    """
+    대화 요약 생성 및 오래된 메시지 삭제
+    """
+    logger.info("Summarizing conversation...")
+    summarization = state.get("summarization")
+    if summarization:
+        summary_msg = (
+            "This is a summary of the conversation to date:\n\n"
+            f"{summarization}\n\n"
+            "Extend the summary by taking into account the new messages above:"
+        )
+    else:
+        summary_msg = "Create a summary of the conversation above:"
 
+    messages = state.get("messages") + [HumanMessage(content=summary_msg)]
+    response = model.invoke(messages)
+
+    # 오래된 메시지 삭제 (8개 제외)
+    delete_messages = [RemoveMessage(id=msg.id) for msg in state.get("messages")[:-8]]
+    return {
+        "summarization": str(response.content).strip(),
+        "messages": delete_messages
+    }
