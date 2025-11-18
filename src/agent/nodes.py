@@ -43,7 +43,10 @@ def generate_query_or_response_node(state: CustomState):
         logger.info(f"question_reason: {state['question_reason']}")
     logger.info("===================================")
     
-    return {"messages": state.get("messages")}
+    return {
+        "messages": state.get("messages"),
+        "question_appropriate": state.get("question_appropriate")
+    }
 
 def route_before_retrieval_node(state: CustomState) -> Literal["retrieve", "rewrite_question"]:
     logger.info(f"Routing decision - question_appropriate: {state.get('question_appropriate')}")
