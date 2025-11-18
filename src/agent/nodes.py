@@ -11,7 +11,7 @@ from src.agent.prompts import GRADE_PROMPT, HITL_PROMPT, SYSTEM_PROMPT
 from ..core.logger import get_logger
 
 logger = get_logger(__name__)
-model, store, retriever_tool = initialize_components()
+model, store, retriever_tool_structured, RetrieverToolNode = initialize_components()
 
 
 def language_detection_node(state: CustomState):
