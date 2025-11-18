@@ -11,7 +11,7 @@ from src.agent.prompts import GRADE_PROMPT, HITL_PROMPT, SYSTEM_PROMPT
 from ..core.logger import get_logger
 
 logger = get_logger(__name__)
-model, store, retriever_tool_structured, RetrieverToolNode = initialize_components()
+model, store, retriever_tool_structured, retriever_node_instance = initialize_components()
 
 
 def language_detection_node(state: CustomState):
@@ -55,8 +55,8 @@ def collect_documents_node(state: CustomState):
     formatted_docs = []
     for idx, doc in enumerate(documents[:3], start=1):  # 최대 3개
         content = doc.get("content", "")
-        metadata = doc.get("metadata", {})
-        source = metadata.get("url", "알 수 없음")
+        meta  = doc.get("metadata", {})
+        source = meta.get("url", "N/A")
         formatted_docs.append(
             f"문서 {idx}:\n"
             f"    내용: {content}\n"

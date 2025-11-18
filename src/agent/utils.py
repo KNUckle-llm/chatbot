@@ -86,30 +86,27 @@ def initialize_components():
             super().__init__([tool])
             self.tool = tool
 
-        def run(self, state, *args, **kwargs):
-            messages = state.get("messages") or []
-            query = str(state.get("messages")[-1].content)
-            
-            if not query:
-                logger.warning("RetrieverToolNode: 사용자 질문 query가 비어있습니다.")
-                return state
-            
-            # StructuredTool 실행
+        def invoke(self, state):
+            # 마지막 user 질문
+            query = state["messages"][-1].content
+            logger.info(f"[RetrieverNode] Query = {query}")
+
             results = self.tool.run(query)
 
-            # 결과를 state에 tool 메시지로 추가
             if results:
-                # state.documents에 추가
-                existing_docs = state.get("documents") or []
-                state.set("documents", existing_docs + results)
-                logger.info(f"RetrieverToolNode: 기존 문서 {len(existing_docs)}개, 추가 {len(results)}개")
+                logger.info(f"[RetrieverNode] 검색 결과 {len(results)}개")
             else:
-                logger.warning("RetrieverToolNode: 검색 결과 없음")
+                logger.warning("[RetrieverNode] 검색 결과 없음")
 
-            return state
+            # 반드시 dict 반환 → LangGraph 정상 transition
+            return {
+                "documents": (state.get("documents") or []) + results
+            }
 
-    return model, store, retriever_tool_structured, RetrieverToolNode
+    # 인스턴스 생성해서 반환
+    tool_node_instance = RetrieverToolNode(retriever_tool_structured)
 
+    return model, store, retriever_tool_structured, tool_node_instance
 
 
 def detect_language(text: str, threshold: float = 0.6) -> Literal["ko", "en"]:

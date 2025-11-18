@@ -58,6 +58,8 @@ jobs:
             sudo docker container prune -f
             # 필요 없는 이미지 정리
             sudo docker image prune -f
+            # 캐시 정리
+            sudo docker system prune -af
 
             # 컨테이너 실행
             # sudo docker run -d -p 80:80 --name knu-chatbot knuknuckle/knu-chatbot:latest
