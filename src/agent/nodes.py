@@ -21,37 +21,51 @@ def generate_query_or_response_node(state: CustomState):
     last_msg = state.get("messages")[-1]
     prompt = (
         f"질문: {last_msg.content}\n"
-        "이 질문이 챗봇 사용자를 기준으로 적절하면 'yes', 부적절하면 'no'로 판단하세요."
+        "이 질문이 챗봇 사용자와 챗봇의 벡터 DB에 저장된 문서 정보를 기준으로 적절하면 'yes', 부적절하면 'no'로 판단하세요."
         "반드시 yes/no 중에 하나가 답변으로 있어야 합니다."
-        "'no'라면, 질문을 기반으로 아래 내용을 근거하여 역질문을 하여 사용자의 질문을 유도합니다."
+        "'no'라면 부적절한 이유를 1~2문장으로 구체적으로 작성하세요.\n"
         f"{HITL_PROMPT.format(language=state.get('language', 'ko'))}\n\n"
     )
     response = model.invoke([SystemMessage(content=prompt)])
-    eval_text = response.content.strip().lower()
-    state["last_question_evaluation"] = eval_text
-    state["question_appropriate"] = eval_text.startswith("yes")
-    if not state["question_appropriate"]:
-        state["question_reason"] = eval_text
+    raw_text = response.content.strip()
     
-    # ✅ 디버그용 로그 추가
+    # yes/no 판단
+    eval_text = "yes" if raw_text.lower().startswith("yes") else "no"
+    state["last_question_evaluation"] = raw_text
+    state["question_appropriate"] = eval_text == "yes"
+
+    # 부적절한 경우 이유만 저장
+    if not state["question_appropriate"]:
+        reason = raw_text[len("no"):].strip()  # "no" 이후 내용을 부적절 이유로 사용
+        state["question_reason"] = reason
+
+    # 디버그 로그
     logger.info("===== Question Evaluation Debug =====")
     logger.info(f"User Question: {last_msg.content}")
-    logger.info(f"Raw LLM Response: {response.content}")
-    logger.info(f"Processed eval_text: {eval_text}")
+    logger.info(f"Raw LLM Response: {raw_text}")
     logger.info(f"question_appropriate: {state['question_appropriate']}")
     if not state["question_appropriate"]:
         logger.info(f"question_reason: {state['question_reason']}")
     logger.info("===================================")
-    
+
     return {
         "messages": state.get("messages"),
-        "question_appropriate": state.get("question_appropriate")
+        "question_appropriate": state.get("question_appropriate"),
+        "question_reason": state.get("question_reason", None)
     }
 
-def route_before_retrieval_node(state: CustomState) -> Literal["retrieve", "rewrite_question"]:
-    logger.info(f"Routing decision - question_appropriate: {state.get('question_appropriate')}")
-    return "retrieve" if state.get("question_appropriate") else "rewrite_question"
 
+
+def route_before_retrieval_node(state: CustomState) -> Literal["retrieve", "rewrite_question"]:
+    # 안전하게 기본값 False 지정
+    is_appropriate = state.get("question_appropriate")
+    if is_appropriate is None:
+        logger.warning("question_appropriate가 None입니다. 기본값 False로 처리합니다.")
+        is_appropriate = True
+        state["question_appropriate"] = is_appropriate
+
+    logger.info(f"Routing decision - question_appropriate: {is_appropriate}")
+    return "retrieve" if is_appropriate else "rewrite_question"
 
 def collect_documents_node(state: CustomState, max_docs: int = 3):
     """질문별 ToolNode 결과만 documents로 저장"""
@@ -69,16 +83,26 @@ def collect_documents_node(state: CustomState, max_docs: int = 3):
 
 def rewrite_question_node(state: CustomState):
     if state.get("question_appropriate"):
+        # 적절한 질문이면 그냥 메시지 반환
         return {"messages": state.get("messages")}
-    reason = state.get("question_reason", "이유 없음")
+
+    last_msg = state.get("messages")[-1]
+    reason = state.get("question_reason", "부적절한 이유 없음")
+
+    # 사용자에게 질문을 어떻게 재작성하면 좋을지 안내
     prompt = (
-        f"{HITL_PROMPT.format(language=state.get('language', 'ko'))}\n"
-        f"질문이 부적절한 이유: {reason}\n"
-        "부적절한 이유를 보고 역질문을 제공해주세요. 아래에 적절한 질문 1~2개를 예시로 가르쳐주세요."
+        f"사용자가 한 질문: {last_msg.content}\n"
+        f"부적절한 이유: {reason}\n\n"
+        "사용자에게 보여줄 안내 메시지를 작성하세요. 형식은 다음과 같아야 합니다:\n"
+        "1. 첫 문단: '질문은 다음과 같은 이유로 부적절합니다. 질문을 다시 입력해주세요.'\n"
+        "   이어서 실제 부적절한 이유를 서술.\n"
+        "2. 두 번째 문단: '그 밑에 이렇게 질문하는건 어떨까요?' 형식으로, "
+        "   사용자가 입력한 질문을 기반으로 조금 더 구체적이고 적절하게 만든 1~2개의 질문 예시 제공."
     )
     response = model.invoke([SystemMessage(content=prompt)])
     state.get("messages").append(response)
     logger.info("Rewritten question/feedback added.")
+
     return {"messages": state.get("messages")}
 
 
