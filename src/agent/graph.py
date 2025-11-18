@@ -9,10 +9,10 @@ from .nodes import (
     generate_query_or_response_node,
     language_detection_node,
     route_before_retrieval_node,
-    collect_documents_node,
     rewrite_question_node,
     generation_node,
     summarization_node,
+    retrieve_documents_node,
 )
 
 logger = get_logger(__name__)
@@ -25,8 +25,9 @@ def build_graph(checkpointer, store=None) -> CompiledStateGraph:
     logger.info("Generating Nodes...")
     builder.add_node("detect_language", language_detection_node)
     builder.add_node("generate_query_or_respond", generate_query_or_response_node)
-    builder.add_node("retrieve", ToolNode([retriever_tool]))
-    builder.add_node("collect_documents", collect_documents_node)
+    #builder.add_node("retrieve", ToolNode([retriever_tool]))
+    builder.add_node("retrieve", retrieve_documents_node)
+    #builder.add_node("collect_documents", collect_documents_node)
     builder.add_node("rewrite_question", rewrite_question_node)
     builder.add_node("generate", generation_node)
     builder.add_node("summarize", summarization_node)
@@ -43,8 +44,7 @@ def build_graph(checkpointer, store=None) -> CompiledStateGraph:
             "rewrite_question": "rewrite_question"
         }
     )
-    builder.add_edge("retrieve", "collect_documents")
-    builder.add_edge("collect_documents", "generate")
+    builder.add_edge("retrieve", "generate")
     builder.add_edge("generate", "summarize")
     builder.add_edge("rewrite_question", END)
     builder.add_edge("summarize", END)
