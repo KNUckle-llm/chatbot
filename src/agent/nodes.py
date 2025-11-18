@@ -67,7 +67,7 @@ def collect_documents_node(state: CustomState):
     # 검색 결과 없음
     if not tool_msgs:
         logger.info("No tool outputs found. Redirecting to rewrite_question.")
-        state.set("next_node", "rewrite_question")
+        state.set("no_docs", True)  # 검색 결과 없음을 표시
         return state
 
     collected = []
@@ -80,6 +80,7 @@ def collect_documents_node(state: CustomState):
             logger.error(f"Failed to parse tool output: {e}")
 
     state.set("documents", collected[:3])
+    state.set("no_docs", False)  # 문서 있음 표시
     logger.info(f"Collected {len(collected)} documents.")
     return state
 

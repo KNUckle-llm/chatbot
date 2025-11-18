@@ -53,7 +53,12 @@ def build_graph(checkpointer, store=None) -> CompiledStateGraph:
     
     # retrieve 경로
     builder.add_edge("retrieve", "collect_documents")
-    builder.add_edge("collect_documents", "generate")
+    # collect_documents에서 조건부 분기
+    builder.add_conditional_edges(
+        "collect_documents",
+        lambda state: "rewrite_question" if state.get("no_docs") else "generate",
+        {"rewrite_question": "rewrite_question", "generate": "generate"}
+    )
     builder.add_edge("generate", "summarize")
     
     # HITL 경로
