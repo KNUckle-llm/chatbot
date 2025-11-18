@@ -37,6 +37,8 @@ GRADE_PROMPT = (
 )
 
 HITL_PROMPT = (
+    "챗봇의 사용자는 SW사업단 소속 학부생으로 컴퓨터공학과, 소프트웨어학과, 인공지능학부, 스마트정보기술공학과가 있다.\n"
+    "챗봇의 벡터 DB에는 학과별 교과과정표, 공지사항, 자료/서식, 규정이 있고 SW사업단 소식, 공지사항, 대회일정 등이 존재한다.\n"
     "Answer in {language}. If 'ko', use Korean. If 'en', use English."
     "Do not answer anything else."
 )
