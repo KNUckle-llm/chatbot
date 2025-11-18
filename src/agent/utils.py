@@ -80,8 +80,10 @@ def initialize_components():
             # 마지막 HumanMessage 가져오기
             query = None
             for msg in reversed(state.get("messages", [])):
-                if getattr(msg, "role", None) == "user":
-                    query = str(msg.content)
+                role = getattr(msg, "role", msg.get("role", None))
+                content = getattr(msg, "content", msg.get("content", None))
+                if role == "user" and content:
+                    query = str(content)
                     break
             
             if not query:
