@@ -31,8 +31,11 @@ def build_graph(checkpointer, store=None) -> CompiledStateGraph:
     
     # retrieve ToolNode
     def retrieve_node(state):
+        logger.info(">>> retrieve_node 실행 직전")
         node = RetrieverToolNode(retriever_tool_structured)
-        return node.run(state)
+        new_state = node.run(state)
+        logger.info(f">>> retrieve_node 완료: documents={len(new_state.get('documents', []))}")
+        return new_state
     builder.add_node("retrieve", retrieve_node)
 
     builder.add_node("collect_documents", collect_documents_node)

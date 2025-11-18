@@ -60,6 +60,14 @@ def initialize_components():
         docs = base_tool.run(query)
         top_docs = docs[:3]
         
+        # 반환 전 로그
+        for i, d in enumerate(top_docs, start=1):
+            logger.info(
+                f"Top doc {i}:\n"
+                f"  content: {d.page_content[:50]}...\n"  # 너무 길면 일부만
+                f"  metadata: {d.metadata}"
+            )
+        
         logger.info(f"Retriever 결과: {len(top_docs)}개")
         return [{"content": d.page_content, "metadata": d.metadata} for d in top_docs]
 
@@ -79,7 +87,7 @@ def initialize_components():
             self.tool = tool
 
         def run(self, state, *args, **kwargs):
-            # 마지막 HumanMessage 가져오기
+            messages = state.get("messages") or []
             query = str(state.get("messages")[-1].content)
             
             if not query:
