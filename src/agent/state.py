@@ -1,12 +1,9 @@
-from typing import Any, Dict, List, Optional, Literal, TypedDict
+from typing import Any, Dict, List, Optional, Literal
 from langgraph.graph import MessagesState
 
-class Document(TypedDict):
-    content: str
-    metadata: dict
 
 class CustomState(MessagesState):
-    profile: Optional[Dict[str, Any]] = None
-    summarization: Optional[str] = None
-    documents: List[Document] = []
-    language: Literal["ko", "en"] = "ko"
+    profile: Optional[Dict[str, Any]]
+    summarization: str | None
+    documents: List[Dict]
+    language: Literal["ko", "en"]
