@@ -77,12 +77,21 @@ def initialize_components():
             self.tool = tool
 
         def run(self, state, *args, **kwargs):
-            # H전체 메시지 중 Human Message
-            query = str(state.get("messages")[-1].content)
+            # 마지막 HumanMessage 가져오기
+            query = None
+            for msg in reversed(state.get("messages", [])):
+                if getattr(msg, "role", None) == "user":
+                    query = str(msg.content)
+                    break
             
             if not query:
                 logger.warning("RetrieverToolNode: 사용자 질문 query가 비어있습니다.")
                 return state
+            
+            # 이전 tool 메시지 삭제 (새 질문 기준)
+            old_tool_msgs = [msg for msg in state.get("messages", []) if getattr(msg, "role", None) == "tool"]
+            for msg in old_tool_msgs:
+                state.remove_message(msg.id)           
 
             # StructuredTool 실행
             results = self.tool.run(query)
