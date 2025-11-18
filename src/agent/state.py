@@ -6,8 +6,7 @@ class Document(TypedDict):
     metadata: dict
 
 class CustomState(MessagesState):
-    profile: Optional[Dict[str, Any]]
-    summarization: Optional[str]
-    documents: List[Document]
-    language: Literal["ko", "en"]
-    next_node: Optional[str] = None  # 다음 노드 지정용
+    profile: Optional[Dict[str, Any]] = None
+    summarization: Optional[str] = None
+    documents: List[Document] = []
+    language: Literal["ko", "en"] = "ko"

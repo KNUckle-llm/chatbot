@@ -1,8 +1,11 @@
-from typing import Optional
+from langgraph.graph import StateGraph, START, END
 from langgraph.graph.state import CompiledStateGraph
-from src.agent.state import CustomState
-from src.agent.utils import initialize_components
-from src.agent.nodes import (
+from langgraph.prebuilt import ToolNode
+
+from ..core.logger import get_logger
+from .state import CustomState
+from .utils import initialize_components
+from .nodes import (
     language_detection_node,
     route_before_retrieval_node,
     collect_documents_node,
@@ -10,47 +13,67 @@ from src.agent.nodes import (
     generation_node,
     summarization_node,
 )
-from ..core.logger import get_logger
 
 logger = get_logger(__name__)
-model, store, retriever_tool_structured, RetrieverToolNode = initialize_components()
+
+def build_graph(checkpointer, store=None) -> CompiledStateGraph:
+    builder = StateGraph(CustomState)
+    model, store, retriever_tool_structured, RetrieverToolNode = initialize_components()
+
+    # -----------------------
+    # 노드 등록
+    # -----------------------
+    builder.add_node("detect_language", language_detection_node)
+    builder.add_node("route_before_retrieval", route_before_retrieval_node)
+
+    # retrieve ToolNode
+    def retrieve_node(state):
+        node = RetrieverToolNode(retriever_tool_structured)
+        return node.run(state)
+    builder.add_node("retrieve", retrieve_node)
+
+    builder.add_node("collect_documents", collect_documents_node)
+    builder.add_node("rewrite_question", rewrite_question_node)
+    builder.add_node("generate", generation_node)
+    builder.add_node("summarize", summarization_node)
+
+    # -----------------------
+    # 노드 연결 (Edges)
+    # -----------------------
+    builder.add_edge(START, "detect_language")
+    builder.add_edge("detect_language", "route_before_retrieval")
+
+    # route_before_retrieval 분기
+    builder.add_conditional_edges(
+        "route_before_retrieval",
+        route_before_retrieval_node,
+        {True: "rewrite_question", False: "retrieve"}
+    )
+
+    # retrieve → collect_documents
+    builder.add_edge("retrieve", "collect_documents")
+
+    # collect_documents 분기
+    builder.add_conditional_edges(
+        "collect_documents",
+        lambda state: bool(state.get("documents")),
+        {True: "generate", False: "rewrite_question"}
+    )
+
+    # generate → summarize
+    builder.add_edge("generate", "summarize")
+
+    # rewrite_question → summarize
+    builder.add_edge("rewrite_question", "summarize")
+
+    # 종료
+    builder.add_edge("summarize", END)
+
+    graph = builder.compile(checkpointer=checkpointer, store=store)
+    logger.info("StateGraph compiled successfully!")
+    return graph
 
 
-# -------------------------------
-# 노드 매핑
-# -------------------------------
-NODE_MAP = {
-    "detect_language": language_detection_node,
-    "route_before_retrieval": route_before_retrieval_node,
-    "retrieve": lambda state: RetrieverToolNode(retriever_tool_structured).run(state),
-    "collect_documents": collect_documents_node,
-    "rewrite_question": rewrite_question_node,
-    "generate": generation_node,
-    "summarize": summarization_node,
-}
-
-
-# -------------------------------
-# next_node 기반 실행
-# -------------------------------
-def run_state_machine(state: CustomState, start_node: str = "detect_language"):
-    state.next_node = start_node
-
-    while state.next_node:
-        node_name = state.next_node
-        logger.info(f"▶ 실행 노드: {node_name}")
-        state.next_node = None  # 실행 전 초기화
-
-        node_func = NODE_MAP.get(node_name)
-        if not node_func:
-            logger.error(f"Node {node_name} 미등록")
-            break
-
-        state = node_func(state)
-
-        # 종료 조건
-        if node_name == "summarize":
-            logger.info("✅ 최종 노드 summarize 실행 완료")
-            break
-
-    return state
+def visualize_graph(graph: CompiledStateGraph):
+    from IPython.display import Image, display
+    display(Image(graph.get_graph().draw_mermaid_png()))
