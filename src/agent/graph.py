@@ -24,7 +24,14 @@ def build_graph(checkpointer, store=None) -> CompiledStateGraph:
     
     # 노드 등록
     builder.add_node("detect_language", language_detection_node)
-    builder.add_node("retrieve", RetrieverToolNode(retriever_tool_structured))
+    #builder.add_node("retrieve", RetrieverToolNode(retriever_tool_structured))
+    def retrieve_node(state):
+        logger.info("🔹 [retrieve_node] 실행 시작", flush=True)
+        node = RetrieverToolNode(retriever_tool_structured)
+        return node.run(state)
+    
+    builder.add_node("retrieve", retrieve_node)
+
     builder.add_node("collect_documents", collect_documents_node)
     builder.add_node("rewrite_question", rewrite_question_node)
     builder.add_node("generate", generation_node)
@@ -45,7 +52,6 @@ def build_graph(checkpointer, store=None) -> CompiledStateGraph:
     )
     
     # retrieve 경로
-    # ("retrieve", ToolNode([retriever_tool]))하면 "retrieve" 노드는 ToolNode를 실행한 결과를 상태(state)에 추가하게 된다.
     builder.add_edge("retrieve", "collect_documents")
     builder.add_edge("collect_documents", "generate")
     builder.add_edge("generate", "summarize")

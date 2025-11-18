@@ -57,7 +57,7 @@ def route_before_retrieval_node(state: CustomState) -> Literal["retrieve", "rewr
     
     if unclear:
         logger.info("→ rewrite_question 경로 선택")
-        state["unclear_reason"] = str(eval_response.content)
+        state.set("unclear_reason", str(eval_response.content))
         return "rewrite_question"
     
     # 명확하면 바로 retrieve 경로
@@ -113,6 +113,7 @@ def rewrite_question_node(state: CustomState):
     # 역질문 안내 메시지 추가
     if unclear_info:
         prompt += f"\n\n사용자의 모호한 질문에 대한 역질문을 제공합니다.\n{unclear_info}"
+    logger.info(f"[HITL PROMPT]\n{prompt}")
 
     response = model.invoke([{"role": "system", "content": prompt}])
     return {"messages": [response]}
