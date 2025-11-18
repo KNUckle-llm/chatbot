@@ -21,7 +21,8 @@ def generate_query_or_response_node(state: CustomState):
     last_msg = state.get("messages")[-1]
     prompt = (
         f"질문: {last_msg.content}\n"
-        "이 질문이 적절하면 'yes', 부적절하면 'no'로 판단하세요."
+        "이 질문이 챗봇 사용자를 기준으로 적절하면 'yes', 부적절하면 'no'로 판단하세요."
+        "반드시 yes/no 중에 하나가 답변으로 있어야 합니다."
         "'no'라면, 질문을 기반으로 아래 내용을 근거하여 역질문을 하여 사용자의 질문을 유도합니다."
         f"{HITL_PROMPT.format(language=state.get('language', 'ko'))}\n\n"
     )
@@ -31,11 +32,21 @@ def generate_query_or_response_node(state: CustomState):
     state["question_appropriate"] = eval_text.startswith("yes")
     if not state["question_appropriate"]:
         state["question_reason"] = eval_text
-    logger.info(f"Question appropriateness: {state['question_appropriate']}")
+    
+    # ✅ 디버그용 로그 추가
+    logger.info("===== Question Evaluation Debug =====")
+    logger.info(f"User Question: {last_msg.content}")
+    logger.info(f"Raw LLM Response: {response.content}")
+    logger.info(f"Processed eval_text: {eval_text}")
+    logger.info(f"question_appropriate: {state['question_appropriate']}")
+    if not state["question_appropriate"]:
+        logger.info(f"question_reason: {state['question_reason']}")
+    logger.info("===================================")
+    
     return {"messages": state.get("messages")}
 
-
 def route_before_retrieval_node(state: CustomState) -> Literal["retrieve", "rewrite_question"]:
+    logger.info(f"Routing decision - question_appropriate: {state.get('question_appropriate')}")
     return "retrieve" if state.get("question_appropriate") else "rewrite_question"
 
 
@@ -60,7 +71,7 @@ def rewrite_question_node(state: CustomState):
     prompt = (
         f"{HITL_PROMPT.format(language=state.get('language', 'ko'))}\n"
         f"질문이 부적절한 이유: {reason}\n"
-        "질문을 적절하게 재작성하거나 안내 메시지를 제공해주세요."
+        "부적절한 이유를 보고 역질문을 제공해주세요. 아래에 적절한 질문 1~2개를 예시로 가르쳐주세요."
     )
     response = model.invoke([SystemMessage(content=prompt)])
     state.get("messages").append(response)
