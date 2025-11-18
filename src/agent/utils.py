@@ -93,7 +93,13 @@ def initialize_components():
             # 이전 tool 메시지 삭제 (새 질문 기준)
             old_tool_msgs = [msg for msg in state.get("messages", []) if getattr(msg, "role", None) == "tool"]
             for msg in old_tool_msgs:
-                state.remove_message(msg.id)           
+                try:
+                    state.remove_message(msg.id)
+                except AttributeError:
+                    # id 기반 삭제 지원 안되면 fallback
+                    messages = state.get("messages", [])
+                    messages = [m for m in messages if m != msg]
+                    state.set("messages", messages)        
 
             # StructuredTool 실행
             results = self.tool.run(query)

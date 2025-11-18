@@ -1,11 +1,8 @@
-from langgraph.graph import StateGraph, START, END
+from typing import Optional
 from langgraph.graph.state import CompiledStateGraph
-from langgraph.prebuilt import ToolNode
-
-from ..core.logger import get_logger
-from .state import CustomState
-from .utils import initialize_components
-from .nodes import (
+from src.agent.state import CustomState
+from src.agent.utils import initialize_components
+from src.agent.nodes import (
     language_detection_node,
     route_before_retrieval_node,
     collect_documents_node,
@@ -13,67 +10,47 @@ from .nodes import (
     generation_node,
     summarization_node,
 )
+from ..core.logger import get_logger
 
 logger = get_logger(__name__)
-
-def build_graph(checkpointer, store=None) -> CompiledStateGraph:
-    builder = StateGraph(CustomState)
-    model, store, retriever_tool_structured, RetrieverToolNode = initialize_components()
-
-    logger.info("Generating Node...")
-    
-    # 노드 등록
-    builder.add_node("detect_language", language_detection_node)
-    #builder.add_node("retrieve", RetrieverToolNode(retriever_tool_structured))
-    def retrieve_node(state):
-        logger.info("🔹 [retrieve_node] 실행 시작", flush=True)
-        node = RetrieverToolNode(retriever_tool_structured)
-        return node.run(state)
-    
-    builder.add_node("retrieve", retrieve_node)
-
-    builder.add_node("collect_documents", collect_documents_node)
-    builder.add_node("rewrite_question", rewrite_question_node)
-    builder.add_node("generate", generation_node)
-    builder.add_node("summarize", summarization_node)
-    logger.info("Node generation complete..!")
-
-    logger.info("Adding Edges...")
-    builder.add_edge(START, "detect_language")
-    
-    # 언어 감지 → 분기 판단
-    builder.add_conditional_edges(
-        "detect_language",
-        route_before_retrieval_node,
-        {
-            "retrieve": "retrieve",
-            "rewrite_question": "rewrite_question"
-        }
-    )
-    
-    # retrieve 경로
-    builder.add_edge("retrieve", "collect_documents")
-    # collect_documents에서 조건부 분기
-    builder.add_conditional_edges(
-        "collect_documents",
-        lambda state: "rewrite_question" if state.get("no_docs") else "generate",
-        {"rewrite_question": "rewrite_question", "generate": "generate"}
-    )
-    builder.add_edge("generate", "summarize")
-    
-    # HITL 경로
-    builder.add_edge("rewrite_question", "summarize")
-    
-    # 공통 종료
-    builder.add_edge("summarize", END)
-    
-    logger.info("Edges added successfully..!")
-
-    graph = builder.compile(checkpointer=checkpointer, store=store)
-    logger.info("Successfully compiled the state graph :D")
-    return graph
+model, store, retriever_tool_structured, RetrieverToolNode = initialize_components()
 
 
-def visualize_graph(graph: CompiledStateGraph):
-    from IPython.display import Image, display
-    display(Image(graph.get_graph().draw_mermaid_png()))
+# -------------------------------
+# 노드 매핑
+# -------------------------------
+NODE_MAP = {
+    "detect_language": language_detection_node,
+    "route_before_retrieval": route_before_retrieval_node,
+    "retrieve": lambda state: RetrieverToolNode(retriever_tool_structured).run(state),
+    "collect_documents": collect_documents_node,
+    "rewrite_question": rewrite_question_node,
+    "generate": generation_node,
+    "summarize": summarization_node,
+}
+
+
+# -------------------------------
+# next_node 기반 실행
+# -------------------------------
+def run_state_machine(state: CustomState, start_node: str = "detect_language"):
+    state.next_node = start_node
+
+    while state.next_node:
+        node_name = state.next_node
+        logger.info(f"▶ 실행 노드: {node_name}")
+        state.next_node = None  # 실행 전 초기화
+
+        node_func = NODE_MAP.get(node_name)
+        if not node_func:
+            logger.error(f"Node {node_name} 미등록")
+            break
+
+        state = node_func(state)
+
+        # 종료 조건
+        if node_name == "summarize":
+            logger.info("✅ 최종 노드 summarize 실행 완료")
+            break
+
+    return state
