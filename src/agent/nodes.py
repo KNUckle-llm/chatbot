@@ -88,11 +88,24 @@ def retrieve_documents_node(state: CustomState, max_docs: int = 3):
         "공주대학교 현장실습지원센터"
     ]
     
+    # 2) alias 매핑 (여기서 OR 조건 처리)
+    alias_map = {
+        "공주대학교 SW중심대학사업단": [
+            "공주대학교 SW중심대학사업단",
+            "SW중심대학사업단",
+        ],
+        "SW중심대학사업단": [
+            "공주대학교 SW중심대학사업단",
+            "SW중심대학사업단",
+        ],
+    }
+    
     # LLM에게 질문 관련 학과 예측
     dept_prompt = (
         f"사용자 질문: {query}\n"
         f"질문을 보고 아래 목록 중에서 관련 학과/부서를 하나 선택하세요:\n"
-        + ", ".join(departments)
+        f"반드시 목록 중 하나를 그대로 출력하세요.\n"
+        f"목록: {', '.join(departments)}"
     )
     dept_response = model.invoke([SystemMessage(content=dept_prompt)])
     predicted_department = dept_response.content.strip()
@@ -100,8 +113,16 @@ def retrieve_documents_node(state: CustomState, max_docs: int = 3):
 
     # store에서 similarity_search로 검색 (필터 적용)
     if predicted_department in departments:
-        docs = store.similarity_search(query, k=max_docs, filter={"department": predicted_department})
+        # alias 지원 (OR 검색)
+        aliases = alias_map.get(predicted_department, [predicted_department])
+        filter_expr = {"department": {"$in": aliases}}
+        logger.info(f"Using filter: {filter_expr}")
+
+        docs = store.similarity_search(query, k=max_docs, filter=filter_expr)
+
     else:
+        # 학과 판단 실패 시 필터 없이 검색
+        logger.info("Predicted department not recognized. Running search without filter.")
         docs = store.similarity_search(query, k=max_docs)
     
     #중요!!!!!! : store에서 similarity_search로 바로 검색
@@ -166,9 +187,9 @@ def rewrite_question_node(state: CustomState):
             f"사용자가 한 질문: {last_msg.content}\n"
             f"불명확한 이유: {reason}\n\n"
             "사용자에게 보여줄 안내 메시지를 작성하세요. 형식은 다음과 같아야 합니다:\n"
-            "첫 문단: '질문은 다음과 같은 이유로 불명확합니다. 질문을 다시 입력해주세요.'\n"
-            "두 번째 문단: 실제 부적절한 이유를 서술하세요.\n"
-            "세 번째 문단: '이렇게 질문하는건 어떨까요?' 형식으로, "
+            "첫 문단입니다. '질문은 다음과 같은 이유로 불명확합니다. 질문을 다시 입력해주세요.'\n"
+            "두 번째 문단입니다. 불명확한 이유를 서술하세요.\n"
+            "세 번째 문단입니다. '이렇게 질문하는건 어떨까요?' 형식으로, "
             "   사용자가 입력한 질문을 기반으로 조금 더 구체적이고 적절하게 만든 1~2개의 질문 예시 제공."
         )
     
