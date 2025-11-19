@@ -135,18 +135,44 @@ def rewrite_question_node(state: CustomState):
     reason = state.get("question_reason", "불명확한 이유 없음")
     previous_summary = state.get("summarization", "")
     
-    # 사용자에게 질문을 어떻게 재작성하면 좋을지 안내
-    prompt = (
-        f"사용자가 한 질문: {last_msg.content}\n"
-        f"불명확한 이유: {reason}\n\n"
-        f"이전 대화 요약: {previous_summary}\n\n"
-        "사용자에게 보여줄 안내 메시지를 작성하세요. 형식은 다음과 같아야 합니다:\n"
-        "첫 문단: '질문은 다음과 같은 이유로 불명확합니다. 질문을 다시 입력해주세요.'\n"
-        "두 번째 문단: 실제 부적절한 이유를 서술하세요.\n"
-        "세 번째 문단: '이렇게 질문하는건 어떨까요?' 형식으로, "
-        "   사용자가 입력한 질문을 기반으로 조금 더 구체적이고 적절하게 만든 1~2개의 질문 예시 제공."
-        "만약, 일상 답변/이전 대화에 해당하는 질문이면 이전 대화요약을 참고하여 제공하면 됩니다.\n"
+    # 1) 질문 유형 판단
+    qtype_prompt = (
+        f"질문: {last_msg.content}\n"
+        "다음 중 하나로 분류하세요: "
+        "1. 이전 대화 관련, "
+        "2. 일반 일상 대화, "
+        "3. 문서/정보 검색용 질문\n"
+        "출력은 숫자(1,2,3)만 사용하세요."
     )
+    qtype_resp = model.invoke([SystemMessage(content=qtype_prompt)])
+    qtype = qtype_resp.content.strip()
+    
+    # 2) 유형별 프롬프트 작성
+    if qtype == "1":
+        prompt = (
+            f"사용자가 한 질문: {last_msg.content}\n"
+            f"이전 대화 요약: {previous_summary}\n\n"
+            f"이 질문은 이전 대화와 관련 있습니다.\n"
+            "사용자 질문에 대한 답변으로 이전 대화 요약을 참고하세요."
+        )
+    elif qtype == "2":
+        prompt = (
+            f"사용자가 한 질문: {last_msg.content}\n"
+            "이 질문은 일반 일상 대화입니다.\n"
+            "적절한 일상 대화로 답변하세요."
+        )
+    else:
+        prompt = (
+            f"사용자가 한 질문: {last_msg.content}\n"
+            f"불명확한 이유: {reason}\n\n"
+            "사용자에게 보여줄 안내 메시지를 작성하세요. 형식은 다음과 같아야 합니다:\n"
+            "첫 문단: '질문은 다음과 같은 이유로 불명확합니다. 질문을 다시 입력해주세요.'\n"
+            "두 번째 문단: 실제 부적절한 이유를 서술하세요.\n"
+            "세 번째 문단: '이렇게 질문하는건 어떨까요?' 형식으로, "
+            "   사용자가 입력한 질문을 기반으로 조금 더 구체적이고 적절하게 만든 1~2개의 질문 예시 제공."
+        )
+    
+    # 3) LLM 호출 후 메시지 추가
     response = model.invoke([SystemMessage(content=prompt)])
     state.get("messages").append(response)
     logger.info("Rewritten question/feedback added.")
