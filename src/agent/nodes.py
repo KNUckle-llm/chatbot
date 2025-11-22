@@ -162,9 +162,8 @@ def rewrite_question_node(state: CustomState):
         f"질문: {last_msg.content}\n"
         "다음 중 하나로 분류하세요: "
         "1. 이전 대화 관련, "
-        "2. 일반 일상 대화, "
         "3. 문서/정보 검색용 질문\n"
-        "출력은 숫자(1,2,3)만 사용하세요."
+        "출력은 숫자(1,3)만 사용하세요."
     )
     qtype_resp = model.invoke([SystemMessage(content=qtype_prompt)])
     qtype = qtype_resp.content.strip()
@@ -177,12 +176,7 @@ def rewrite_question_node(state: CustomState):
             f"이 질문은 이전 대화와 관련 있습니다.\n"
             "사용자 질문에 대한 답변으로 이전 대화 요약을 참고하세요."
         )
-    elif qtype == "2":
-        prompt = (
-            f"사용자가 한 질문: {last_msg.content}\n"
-            "이 질문은 일반 일상 대화입니다.\n"
-            "적절한 일상 대화로 답변하세요."
-        )
+        
     else:
         prompt = (
             f"사용자가 한 질문: {last_msg.content}\n"
@@ -216,7 +210,7 @@ def generation_node(state: CustomState):
         f"본문 내용: {d['content']}\n"
         f"제목: {d.get('metadata', {}).get('file_name', '')}\n"
         f"부서: {d.get('metadata', {}).get('department', '')}\n"
-        f"작성일: {d.get('metadata', {}).get('date', '')}"
+        f"작성일: {d.get('metadata', {}).get('date', '')}\n"
         f"출처: {d.get('metadata', {}).get('url', '')}\n"
         for i, d in enumerate(documents)
     ])
