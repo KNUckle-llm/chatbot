@@ -179,13 +179,13 @@ def generation_node(state: CustomState):
     last_msg = state.get("messages")[-1]
 
     # 문서 내용 그대로 전달 + 개행 유지 + 문서 사이 빈 줄 추가
-    docs_text = "\n\n".join([
+    docs_text = "\n\n---\n\n".join([
         f"문서 {i+1}\n"
-        f"본문 내용:\n{d['content']}\n"
-        f"제목:\n{d.get('metadata', {}).get('file_name', '')}\n"
-        f"부서:\n{d.get('metadata', {}).get('department', '')}\n"
-        f"작성일:\n{d.get('metadata', {}).get('date', '')}\n"
-        f"출처:\n{d.get('metadata', {}).get('url', '')}"
+        f"본문 내용:\n{d['content']}\n\n"
+        f"제목:\n{d.get('metadata', {}).get('file_name', '')}\n\n"
+        f"부서:\n{d.get('metadata', {}).get('department', '')}\n\n"
+        f"작성일:\n{d.get('metadata', {}).get('date', '')}\n\n"
+        f"출처:\n{d.get('metadata', {}).get('url', '')}\n"
         for i, d in enumerate(documents)
     ])
 
