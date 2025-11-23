@@ -25,12 +25,6 @@ def generate_query_or_response_node(state: CustomState):
     current_question = messages[-1].content  # 현재 사용자 질문
     prev_department = state.get("current_department")
 
-    # 🔹 follow_up_chain 초기화
-    if state.get("follow_up_chain") is None:
-        state["follow_up_chain"] = []
-        state["follow_up"] = False
-        logger.info("follow_up_chain 초기화됨")
-    
     # 🔹 현재 질문을 체인에 append    
     state["follow_up_chain"].append(current_question)
     logger.info(f"현재 질문: {current_question}")
@@ -218,12 +212,15 @@ def rewrite_question_node(state: CustomState):
     if state.get("question_appropriate"):
         return {"messages": state.get("messages")}
 
-    last_msg = state.get("messages")[-1]
+    # last_msg = state.get("messages")[-1]
+    follow_up_chain = state.get("follow_up_chain", [])
+    combined_question = " ".join(follow_up_chain)
+    
     reason = state.get("question_reason", "불명확한 이유 없음")
     prev_department = state.get("current_department")
     
     prompt = (
-        f"사용자가 한 질문: {last_msg.content}\n"
+        f"사용자가 한 질문: {combined_question}\n"
         f"불명확한 이유: {reason}\n\n"
         "사용자에게 보여줄 안내 메시지를 작성하세요. 형식은 다음과 같아야 합니다:\n"
         "첫 문단입니다. '질문은 다음과 같은 이유로 불명확합니다. 질문을 다시 입력해주세요.'\n"
@@ -245,11 +242,14 @@ def generation_node(state: CustomState):
     language = state.get("language", "ko")
     documents = state.get("documents", [])
     summarization = state.get("summarization", "")
-    last_msg = state.get("messages")[-1]
+    
+    #last_msg = state.get("messages")[-1]
+    follow_up_chain = state.get("follow_up_chain", [])
+    combined_question = " ".join(follow_up_chain)
     
     # 문서 내용 그대로 전달 + 개행 유지 + 문서 사이 빈 줄 추가
     docs_text = "\n\n---\n\n".join([
-        f"문서 {i+1}\n\n"
+        f"[검색된 문서 {i+1}]\n\n"
         f"본문 내용:\n{d['content']}\n\n"
         f"제목:\n{d.get('metadata', {}).get('file_name', '')}\n\n"
         f"부서:\n{d.get('metadata', {}).get('department', '')}\n\n"
@@ -260,7 +260,8 @@ def generation_node(state: CustomState):
     
     # 시스템 메시지 생성
     system_message = SYSTEM_PROMPT.format(
-        input=last_msg.content,
+        #input=last_msg.content,
+        input=combined_question,
         documents=docs_text,
         summary=summarization
     )
