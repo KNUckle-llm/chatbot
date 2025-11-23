@@ -147,7 +147,7 @@ def route_before_retrieval_node(state: CustomState) -> Literal["retrieve", "rewr
 
 
 
-def retrieve_documents_node(state: CustomState, max_docs: int = 2):
+def retrieve_documents_node(state: CustomState, max_docs: int = 3):
     logger.info(">>> [NODE] retrieve_documents_node START")
     messages = state.get("messages")
     #query = messages[-1].content
@@ -220,7 +220,7 @@ def retrieve_documents_node(state: CustomState, max_docs: int = 2):
     ]
     
     logger.info(f"Retrieved {len(docs)} documents for query: {extended_query}")
-    return {"documents": state["documents"]}
+    return {"documents": state["documents"], "current_department": state.get("current_department")}
 
 
 
