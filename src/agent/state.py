@@ -9,4 +9,3 @@ class CustomState(MessagesState):
     language: Literal["ko", "en"]
     question_appropriate: Optional[bool]  # 질문 적절성 판단
     question_reason: Optional[str]        # 질문 판단 이유
-    predicted_department: Optional[str]   # 마지막 질문에 대해 추출된 학과/부서
