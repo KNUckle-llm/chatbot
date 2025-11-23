@@ -21,35 +21,55 @@ def language_detection_node(state: CustomState):
 
 def generate_query_or_response_node(state: CustomState):
     logger.info(">>> [NODE] generate_query_or_response_node START")
-    last_msg = state.get("messages")[-1]
-    previous_summary = state.get("summarization", "")
+    messages = state.get("messages")
+    current_question = messages[-1].content  # 현재 사용자 질문
     prev_department = state.get("current_department")
-    prev_topic = state.get("current_topic")
+
+    # 🔹 최초 질문이면 follow_up_chain 초기화
+    if state.get("follow_up_chain") is None or len(state.get("follow_up_chain", [])) == 0:
+        state["follow_up_chain"] = [current_question]
+        state["follow_up"] = False
+        logger.info("첫 질문이므로 follow_up_chain 초기화됨")
+        previous_questions = ""  # 첫 질문이므로 이전 질문 없음
+    else:
+        previous_questions = " ".join(state["follow_up_chain"])  # chain 전체
+
+    # 🔹 follow-up 판단 (첫 질문이면 건너뜀)
+    is_follow_up = False
+    if len(state["follow_up_chain"]) > 1:
+        followup_prompt = (
+            "너는 공주대학교 정보를 알려주는 챗봇입니다.\n"
+            f"사용자 질문: {current_question}\n"
+            f"이전 질문: {previous_questions}\n"
+            f"이전 질문 학과: {prev_department}\n"
+            "이 질문이 이전 질문과 관계된 follow-up 질문인지 반드시 영문 yes/no 로만 답하세요.\n"
+            "이전 질문과 현재 질문이 서로 다른 학과(또는 서로 다른 교수/대회/제도 등)에 대한 질문이면 반드시 no 로 판단하세요.\n"
+            "반대로 동일 학과 혹은 동일 교수/강의/제도 등에 대한 추가적인 질문이라면 반드시 yes 로 판단하세요.\n"
+        )
+        followup_response = model.invoke([SystemMessage(content=followup_prompt)])
+        followup_text = followup_response.content.strip().lower()
+        is_follow_up = followup_text.startswith("yes")
+        state["follow_up"] = is_follow_up
+        logger.info(f"Follow-up 판단 결과: {is_follow_up}")
     
-    # 1️⃣ Follow-up 판단
-    followup_prompt = (
-        "너는 공주대학교 정보를 알려주는 챗봇입니다.\n"
-        f"사용자 질문: {last_msg.content}\n"
-        f"이전 대화 학과: {prev_department}\n"
-        f"이전 대화 주제: {prev_topic}\n"
-        f"이전 대화 요약: {previous_summary}\n\n"
-        "이 질문이 이전 대화와 관련된 follow-up 질문인지 반드시 영문 'yes' 또는 'no'로만 답하세요."
-    )
-    followup_response = model.invoke([SystemMessage(content=followup_prompt)])
-    followup_text = followup_response.content.strip().lower()
-    state["follow_up"] = followup_text.startswith("yes")
-    logger.info(f"Follow-up 판단: {state['follow_up']}")
-    
-    # 2️⃣ Follow-up이면 바로 검색 진행
-    if state["follow_up"]:
-        logger.info("Follow-up 질문으로 판단되어 바로 검색 단계로 진행합니다.")
+    # 🔹 follow-up이면 chain에 추가하고 바로 종료
+    if is_follow_up:
+        state["follow_up_chain"].append(current_question)
         state["question_appropriate"] = True
         state["question_reason"] = None
         return {"follow_up": True, "question_appropriate": True}
+
+    # 🔹 follow-up이 아니면 chain 갱신 (첫 질문도 포함)
+    if not is_follow_up:
+        if len(state["follow_up_chain"]) > 1:
+            # 기존 chain 초기화 후 새로운 질문 시작
+            state["follow_up_chain"] = [current_question]
+        # 첫 질문이면 이미 chain 초기화 되어 있음
     
+    # 🔹 질문 적절성 판단 (LLM 호출)
     appropriateness_prompt = (
         "너는 공주대학교 정보를 알려주는 챗봇입니다.\n"
-        f"사용자 질문: {last_msg.content}\n"
+        f"사용자 질문: {current_question}\n"
         "아래 기준을 바탕으로 현재 사용자 질문이 검색 가능한 문서로 답변 가능한지 판단하세요.\n\n"
 
         "### 판단 기준\n" 
@@ -73,8 +93,7 @@ def generate_query_or_response_node(state: CustomState):
     response = model.invoke([SystemMessage(content=appropriateness_prompt)])
     raw_text = response.content.strip()
     
-    # 질문 적절성 판단 및 이유 저장
-    # Regex로 yes/no 체크
+    # 🔹 Regex로 yes/no 체크
     match = re.match(r"^(yes|no)", raw_text.lower())
     if match:
         if match.group(1) == "no":
@@ -84,21 +103,11 @@ def generate_query_or_response_node(state: CustomState):
             state["question_appropriate"] = True
             state["question_reason"] = None
     else:
-        # 출력이 예상과 다를 경우 안전 처리
         logger.warning("LLM 출력이 예상 형식과 다릅니다. 기본값 no 처리")
         state["question_appropriate"] = False
         state["question_reason"] = "LLM 출력 형식 오류"
 
-    # 디버그 로그
-    logger.info("===== Question Evaluation Debug =====")
-    logger.info(f"User Question: {last_msg.content}")
-    logger.info(f"Raw LLM Response: {raw_text}")
-    logger.info(f"question_appropriate: {state['question_appropriate']}")
-    if not state["question_appropriate"]:
-        logger.info(f"question_reason: {state['question_reason']}")
-    logger.info("===================================")
-
-    #state.get("messages").append(response)
+    logger.info(f"question_appropriate: {state['question_appropriate']}, reason: {state.get('question_reason')}")
     return {
         "follow_up": False,
         "question_appropriate": state["question_appropriate"],
@@ -109,28 +118,18 @@ def generate_query_or_response_node(state: CustomState):
 
 def route_before_retrieval_node(state: CustomState) -> Literal["retrieve", "rewrite_question"]:
     logger.info(">>> [NODE] route_before_retrieval_node START")
-    
-    # follow-up이면 무조건 retrieve
+    # follow-up이면 바로 retrieve
     if state.get("follow_up"):
-        logger.info("Follow-up 질문으로 판단되어 바로 retrieve 단계로 진행합니다.")
         return "retrieve"
-
-    # follow-up이 아니면 question_appropriate 기준으로 라우팅
-    is_appropriate = state.get("question_appropriate")
-    if is_appropriate is None:
-        logger.warning("question_appropriate가 None입니다. 기본값 False로 처리합니다.")
-        is_appropriate = False
-        state["question_appropriate"] = is_appropriate
-
-    logger.info(f"Routing decision - question_appropriate: {is_appropriate}")
-    return "retrieve" if is_appropriate else "rewrite_question"
+    # follow-up 아니더라도 적절성 판단 결과에 따라 결정
+    return "retrieve" if state.get("question_appropriate") else "rewrite_question"
 
 
 
 def retrieve_documents_node(state: CustomState, max_docs: int = 3):
     logger.info(">>> [NODE] retrieve_documents_node START")
-    last_msg = state.get("messages")[-1]
-    query = str(last_msg.content).strip()
+    messages = state.get("messages")
+    query = messages[-1].content
 
     # 학과 후보 리스트
     departments = [
@@ -146,65 +145,47 @@ def retrieve_documents_node(state: CustomState, max_docs: int = 3):
     
     # 2) alias 매핑 (여기서 OR 조건 처리)
     alias_map = {
-        "공주대학교 SW중심대학사업단": [
-            "공주대학교 SW중심대학사업단",
-            "SW중심대학사업단",
-        ],
-        "SW중심대학사업단": [
-            "공주대학교 SW중심대학사업단",
-            "SW중심대학사업단",
-        ],
+        "공주대학교 SW중심대학사업단": ["공주대학교 SW중심대학사업단", "SW중심대학사업단"],
+        "SW중심대학사업단": ["공주대학교 SW중심대학사업단", "SW중심대학사업단"],
     }
     
-    # LLM에게 질문 관련 학과 예측
-    dept_prompt = (
-        f"사용자 질문: {query}\n"
-        f"질문을 보고 아래 목록 중에서 관련 학과/부서를 하나 선택하세요:\n"
-        f"반드시 목록 중 하나를 그대로 출력하세요.\n"
-        f"목록: {', '.join(departments)}"
-    )
-    dept_response = model.invoke([SystemMessage(content=dept_prompt)])
-    predicted_department = dept_response.content.strip()
-    logger.info(f"Predicted department: {predicted_department}")
+    previous_questions = " ".join(state.get("follow_up_chain", []))
+    follow_up = state.get("follow_up", False)
 
-    # 기존 학과가 없거나, 다른 학과면 갱신
+    # LLM에게 질문 관련 학과 예측
+    if not follow_up:
+        # follow-up이 아니면 LLM으로 학과 예측
+        dept_prompt = (
+            f"사용자 질문: {query}\n"
+            f"질문을 보고 아래 목록 중에서 관련 학과/부서를 하나 선택하세요:\n"
+            f"반드시 목록 중 하나를 그대로 출력하세요.\n"
+            f"목록: {', '.join(departments)}"
+        )
+        dept_response = model.invoke([SystemMessage(content=dept_prompt)])
+        predicted_department = dept_response.content.strip()
+        logger.info(f"Predicted department: {predicted_department}")
+    else:
+        # follow-up이면 이전 학과 유지
+        predicted_department = state.get("current_department", "")
+
+    # 학과 갱신
     if state.get("current_department") != predicted_department:
         state["current_department"] = predicted_department
-        logger.info(f"Updated current_department: {predicted_department}")
     
     # 이전 학과/주제 참조
     dept = state.get("current_department", "")
-    topic = state.get("current_topic", "")
-    # follow-up 확장 쿼리 생성
-    extended_query = f"{dept} {topic} {query}" if dept and topic else query
+    extended_query = f"{dept} {previous_questions} {query}" if previous_questions else f"{dept} {query}"
+    extended_query = extended_query.strip()
     
-    # store에서 similarity_search로 검색 (필터 적용)
+    # store에서 검색
     if predicted_department in departments:
-        # alias 지원 (OR 검색)
         aliases = alias_map.get(predicted_department, [predicted_department])
         filter_expr = {"department": {"$in": aliases}}
         logger.info(f"Using filter: {filter_expr}")
-
         docs = store.similarity_search(extended_query, k=max_docs, filter=filter_expr)
-
     else:
-        # 학과 판단 실패 시 필터 없이 검색
         logger.info("Predicted department not recognized. Running search without filter.")
         docs = store.similarity_search(extended_query, k=max_docs)
-    
-    
-    # LLM으로 주제 변경
-    topic_prompt = (
-        f"사용자 질문: {query}\n"
-        f"현재 학과: {predicted_department}\n"
-        "질문을 한 문장으로 요약하여 주제를 만들어주세요. "
-        "짧고 핵심적인 한 문장으로 작성하세요. (최대 10단어를 넘지 마세요)"
-    )
-    topic_response = model.invoke([SystemMessage(content=topic_prompt)])
-    state["current_topic"] = topic_response.content.strip()
-    logger.info(f"Updated current_topic: {state['current_topic']}")
-    
-    
 
     state["documents"] = [
         {
@@ -218,7 +199,7 @@ def retrieve_documents_node(state: CustomState, max_docs: int = 3):
         }
         for d in docs
     ]
-
+    
     logger.info(f"Retrieved {len(docs)} documents for query: {query}")
     return {"documents": state["documents"]}
 
@@ -227,31 +208,29 @@ def retrieve_documents_node(state: CustomState, max_docs: int = 3):
 def rewrite_question_node(state: CustomState):
     logger.info(">>> [NODE] rewrite_question_node START")
     if state.get("question_appropriate"):
-        # 적절한 질문이면 그냥 메시지 반환
         return {"messages": state.get("messages")}
 
     last_msg = state.get("messages")[-1]
     reason = state.get("question_reason", "불명확한 이유 없음")
-    previous_summary = state.get("summarization", "")
+    prev_department = state.get("current_department")
     
     prompt = (
         f"사용자가 한 질문: {last_msg.content}\n"
         f"불명확한 이유: {reason}\n\n"
-        f"이전 대화 요약: {previous_summary}\n\n"
+        f"관련 학과: {prev_department}\n\n"
         "사용자에게 보여줄 안내 메시지를 작성하세요. 아래 형식을 반드시 따르세요:\n\n"
         "1) 첫 번째 문단:\n"
         "   다음 문장을 그대로 작성합니다:\n"
         "   질문은 다음과 같은 이유로 불명확합니다. 질문을 다시 입력해주세요.\n\n"
         "2) 두 번째 문단:\n"
-        "   두 번째 문단을 창조하세요:\n"
-        "   불명확한 이유를 기반으로, 이전 대화를 참고하여 왜 검색을 수행하지 못하는지 명확하게 서술하세요.\n\n"
+        "   불명확한 이유를 기반으로, 이전 대화를 참고하여 왜 검색을 수행하지 못하는지 서술하세요.\n\n"
         "3) 세 번째 문단:\n"
         "   문단은 반드시 '이렇게 질문하는건 어떨까요?'로 시작합니다.\n"
         "   이후 LLM이 현재 질문과 불명확한 이유를 바탕으로,\n"
         "   더 구체적이고 검색 가능한 질문 예시 1~2개를 bullet 형식으로 작성합니다.\n"
     )
     
-    # 3) LLM 호출 후 메시지 추가
+    # AI메세지 추가
     response = model.invoke([SystemMessage(content=prompt)])
     state.get("messages").append(response)
     logger.info("Rewritten question/feedback added.")
@@ -266,16 +245,14 @@ def generation_node(state: CustomState):
     summarization = state.get("summarization", "")
     last_msg = state.get("messages")[-1]
 
-    # 문서 내용을 정리해서 문자열로 만듦
-    #docs_text = "\n".join([f"문서 {i+1}:\n    내용: {d['content']}" for i, d in enumerate(documents)])
     docs_text = "\n\n".join([
-        f"[검색된 문서 {i+1}]\n"
-        f"문서 내용:\n{d['content']}\n"
-        f"제목: {d.get('metadata', {}).get('file_name', '')}\n"
-        f"부서: {d.get('metadata', {}).get('department', '')}\n"
-        f"작성일: {d.get('metadata', {}).get('date', '')}\n"
-        f"출처: {d.get('metadata', {}).get('url', '')}\n"
-        for i, d in enumerate(documents)
+        f"""[검색된 문서 {i+1}]
+    문서 내용: {d['content']}
+    제목: {d.get('metadata', {}).get('file_name', '')}
+    부서: {d.get('metadata', {}).get('department', '')}
+    작성일: {d.get('metadata', {}).get('date', '')}
+    출처: {d.get('metadata', {}).get('url', '')}
+    """ for i, d in enumerate(documents)
     ])
     
     # 시스템 메시지 생성
