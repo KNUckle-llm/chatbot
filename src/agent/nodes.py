@@ -180,7 +180,7 @@ def generation_node(state: CustomState):
 
     # 문서 내용 그대로 전달 + 개행 유지 + 문서 사이 빈 줄 추가
     docs_text = "\n\n---\n\n".join([
-        f"문서 {i+1}\n"
+        f"문서 {i+1}\n\n"
         f"본문 내용:\n{d['content']}\n\n"
         f"제목:\n{d.get('metadata', {}).get('file_name', '')}\n\n"
         f"부서:\n{d.get('metadata', {}).get('department', '')}\n\n"
