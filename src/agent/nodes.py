@@ -21,39 +21,70 @@ def language_detection_node(state: CustomState):
 def generate_query_or_response_node(state: CustomState):
     logger.info(">>> [NODE] generate_query_or_response_node START")
     last_msg = state.get("messages")[-1]
+    
+    # 학과 후보 리스트
+    departments = [
+        "공주대학교",
+        "공주대학교 SW중심대학사업단",
+        "소프트웨어학과",
+        "컴퓨터공학과",
+        "스마트정보기술공학과",
+        "인공지능학부",
+        "공주대학교 현장실습지원센터"
+    ]
+    
+    # 개선된 판단 프롬프트
+    # yes/no 판단 + 이유 + 학과 선택
     prompt = (
         f"질문: {last_msg.content}\n"
-        "이 질문이 챗봇 사용자와 챗봇의 검색 가능한 문서를 기준으로 어느정도 관련성이 있는 경우 'yes', 불명확하면 'no'로 판단하세요."
-        "반드시 맨 처음 시작으로 영어로 yes/no 중에 하나가 답변으로 있어야 합니다.\n"
-        "교수님에 대한 질문이 들어오면 무조건 yes로 답하세요.\n"
-        "'no'라면 불명확하면 이유를 1~2문장으로 구체적으로 작성하세요.\n"
-        "챗봇의 사용자는 SW사업단 소속 학부생으로 컴퓨터공학과, 소프트웨어학과, 인공지능학부, 스마트정보기술공학과가 있다.\n"
-        "검색 가능한 문서로는 학과별 교수님 공식정보(이메일, 전화번호), 학과별 교과과정표, 학과별 공지사항, 학과별 자료/서식, 학과별 규정이 있고 SW사업단 소식, SW사업단 공지사항, SW사업단 대회일정 등이 존재한다.\n"
+        "공주대학교 챗봇입니다.\n"
+        "아래 기준을 바탕으로 이 질문이 검색 가능한 문서로 답변 가능한지 판단하세요.\n\n"
+
+        "### 판단 기준\n"
+        "1) 아래 학과/부서 중 하나와 직접 관련된 질문이면 'yes'입니다.\n"
+        f"   - {', '.join(departments)}\n\n"
+
+        "2) 검색 가능한 문서 범위는 다음과 같습니다.\n"
+        "   - 공주대학교 전학과 통합 수강신청/장학/비자/논문/순환버스\n"
+        "   - 학과별 교수님/교과과정표/공지사항/자료/서식/규정\n"
+        "   - SW사업단 소개/공지사항/소식/대회일정(TOPCIT, SW알고리즘 경진대회 등)\n"
+        "   - 교수님 정보에는 이메일, 전화번호, 연구실, 연구활동 등이 있습니다.\n\n"
+
+        "3) 개인정보 포함 여부는 적절성 판단 기준이 아닙니다.\n"
+        "   위 판단 기준으로 답이 가능한지 여부만 고려하세요.\n\n"
+
+        "### 출력 형식\n"
+        "- 첫 줄: 반드시 영어 'yes' 또는 'no'로 시작 (대소문자 혼용 금지)\n"
+        "- 둘째 줄: 판단 이유 1~2문장\n"
+        "  - yes일 때: 질문이 검색 가능한 문서 범위 내에서 답변 가능하다는 이유\n"
+        "  - no일 때: 질문이 검색 가능한 문서 범위 내에서 답변할 수 없는 이유 (왜 부적절한지 간단하게 설명)\n"
+        "- 마지막 줄: 아래 학과/부서 목록 중 반드시 하나를 그대로 출력\n"
+        f"  - 목록: {', '.join(departments)}"
     )
+
+    # LLM 호출
     response = model.invoke([SystemMessage(content=prompt)])
-    raw_text = response.content.strip()
-    
-    # 질문 적절성 판단 및 이유 저장
-    if raw_text.lower().startswith("no"):
-        state["question_appropriate"] = False
-        state["question_reason"] = raw_text[2:].strip()
-    else:
-        state["question_appropriate"] = True
-        state["question_reason"] = None
+    raw_text = response.content.strip().splitlines()
+
+    # yes/no 판단 및 reason, 학과 추출
+    state["question_appropriate"] = raw_text[0].lower() == "yes"
+    state["question_reason"] = raw_text[1] if len(raw_text) > 1 and not state.get("question_appropriate") else None
+    state["predicted_department"] = raw_text[-1].strip() if len(raw_text) > 2 else None
 
     # 디버그 로그
     logger.info("===== Question Evaluation Debug =====")
     logger.info(f"User Question: {last_msg.content}")
     logger.info(f"Raw LLM Response: {raw_text}")
-    logger.info(f"question_appropriate: {state['question_appropriate']}")
-    if not state["question_appropriate"]:
-        logger.info(f"question_reason: {state['question_reason']}")
+    logger.info(f"question_appropriate: {state.get('question_appropriate')}")
+    if not state.get("question_appropriate"):
+        logger.info(f"question_reason: {state.get('question_reason')}")
+    logger.info(f"predicted_department: {state.get('predicted_department')}")
     logger.info("===================================")
 
-    #state.get("messages").append(response)
     return {
-        "question_appropriate": state["question_appropriate"],
-        "question_reason": state.get("question_reason", None)
+        "question_appropriate": state.get("question_appropriate"),
+        "question_reason": state.get("question_reason"),
+        "predicted_department": state.get("predicted_department")
     }
 
 
@@ -77,7 +108,10 @@ def retrieve_documents_node(state: CustomState, max_docs: int = 3):
     last_msg = state.get("messages")[-1]
     query = str(last_msg.content).strip()
 
-    # 학과 후보 리스트
+    predicted_department = state.get("predicted_department")
+    logger.info(f"Using predicted department from state: {predicted_department}")
+
+    # 학과 후보 리스트와 alias
     departments = [
         "소프트웨어학과",
         "컴퓨터공학과",
@@ -88,47 +122,20 @@ def retrieve_documents_node(state: CustomState, max_docs: int = 3):
         "인공지능학부",
         "공주대학교 현장실습지원센터"
     ]
-    
-    # 2) alias 매핑 (여기서 OR 조건 처리)
     alias_map = {
-        "공주대학교 SW중심대학사업단": [
-            "공주대학교 SW중심대학사업단",
-            "SW중심대학사업단",
-        ],
-        "SW중심대학사업단": [
-            "공주대학교 SW중심대학사업단",
-            "SW중심대학사업단",
-        ],
+        "공주대학교 SW중심대학사업단": ["공주대학교 SW중심대학사업단", "SW중심대학사업단"],
+        "SW중심대학사업단": ["공주대학교 SW중심대학사업단", "SW중심대학사업단"],
     }
     
-    # LLM에게 질문 관련 학과 예측
-    dept_prompt = (
-        f"사용자 질문: {query}\n"
-        f"질문을 보고 아래 목록 중에서 관련 학과/부서를 하나 선택하세요:\n"
-        f"반드시 목록 중 하나를 그대로 출력하세요.\n"
-        f"목록: {', '.join(departments)}"
-    )
-    dept_response = model.invoke([SystemMessage(content=dept_prompt)])
-    predicted_department = dept_response.content.strip()
-    logger.info(f"Predicted department: {predicted_department}")
-
-    # store에서 similarity_search로 검색 (필터 적용)
     if predicted_department in departments:
-        # alias 지원 (OR 검색)
         aliases = alias_map.get(predicted_department, [predicted_department])
         filter_expr = {"department": {"$in": aliases}}
         logger.info(f"Using filter: {filter_expr}")
-
         docs = store.similarity_search(query, k=max_docs, filter=filter_expr)
-
     else:
-        # 학과 판단 실패 시 필터 없이 검색
-        logger.info("Predicted department not recognized. Running search without filter.")
+        logger.info("No valid predicted_department. Running search without filter.")
         docs = store.similarity_search(query, k=max_docs)
     
-    #중요!!!!!! : store에서 similarity_search로 바로 검색
-    #docs = store.similarity_search(query, k=max_docs)
-
     state["documents"] = [
         {
             "content": d.page_content,
@@ -155,49 +162,24 @@ def rewrite_question_node(state: CustomState):
 
     last_msg = state.get("messages")[-1]
     reason = state.get("question_reason", "불명확한 이유 없음")
-    previous_summary = state.get("summarization", "")
+    #previous_summary = state.get("summarization", "")
     
-    # 1) 질문 유형 판단
-    qtype_prompt = (
-        f"질문: {last_msg.content}\n"
-        "다음 중 하나로 분류하세요: "
-        "1. 이전 대화 관련, "
-        "2. 일반 일상 대화, "
-        "3. 문서/정보 검색용 질문\n"
-        "출력은 숫자(1,2,3)만 사용하세요."
+    prompt = (
+        f"사용자가 한 질문: {last_msg.content}\n"
+        f"불명확한 이유: {reason}\n\n"
+        "사용자에게 보여줄 안내 메시지를 작성하세요. 형식은 다음과 같아야 합니다:\n"
+        "첫 문단입니다. '질문은 다음과 같은 이유로 불명확합니다. 질문을 다시 입력해주세요.'\n"
+        "두 번째 문단입니다. 불명확한 이유를 서술하세요.\n"
+        "세 번째 문단입니다. '이렇게 질문하는건 어떨까요?' 라는 문장으로 시작하고,\n"
+        "   사용자의 질문과 불명확한 이유를 기반으로 더 구체적이고 적절한 질문 예시 1~2개를 bullet 형식으로 제시하세요."
     )
-    qtype_resp = model.invoke([SystemMessage(content=qtype_prompt)])
-    qtype = qtype_resp.content.strip()
-    
-    # 2) 유형별 프롬프트 작성
-    if qtype == "1":
-        prompt = (
-            f"사용자가 한 질문: {last_msg.content}\n"
-            f"이전 대화 요약: {previous_summary}\n\n"
-            f"이 질문은 이전 대화와 관련 있습니다.\n"
-            "사용자 질문에 대한 답변으로 이전 대화 요약을 참고하세요."
-        )
-    elif qtype == "2":
-        prompt = (
-            f"사용자가 한 질문: {last_msg.content}\n"
-            "이 질문은 일반 일상 대화입니다.\n"
-            "적절한 일상 대화로 답변하세요."
-        )
-    else:
-        prompt = (
-            f"사용자가 한 질문: {last_msg.content}\n"
-            f"불명확한 이유: {reason}\n\n"
-            "사용자에게 보여줄 안내 메시지를 작성하세요. 형식은 다음과 같아야 합니다:\n"
-            "첫 문단입니다. '질문은 다음과 같은 이유로 불명확합니다. 질문을 다시 입력해주세요.'\n"
-            "두 번째 문단입니다. 불명확한 이유를 서술하세요.\n"
-            "세 번째 문단입니다. '이렇게 질문하는건 어떨까요?' 형식으로,\n"
-            "   사용자가 입력한 질문을 기반으로 조금 더 구체적이고 적절하게 만든 1~2개의 질문 예시 제공."
-        )
-    
-    # 3) LLM 호출 후 메시지 추가
+
     response = model.invoke([SystemMessage(content=prompt)])
     state.get("messages").append(response)
-    logger.info("Rewritten question/feedback added.")
+    logger.info("HITL 안내 메시지 생성 완료.")
+
+    # 요약 업데이트
+    summarization_node(state)
 
     return {"messages": state.get("messages")}
 
@@ -206,7 +188,6 @@ def generation_node(state: CustomState):
     logger.info(">>> [NODE] generation_node START")
     language = state.get("language", "ko")
     documents = state.get("documents", [])
-    summarization = state.get("summarization", "")
     last_msg = state.get("messages")[-1]
 
     # 문서 내용을 정리해서 문자열로 만듦
@@ -221,15 +202,26 @@ def generation_node(state: CustomState):
         for i, d in enumerate(documents)
     ])
     
+    # 최근 HumanMessage 3개 선택
+    #recent_user_msgs = [m.content for m in state.get("messages") if isinstance(m, HumanMessage)][-3:]
+    #previous_questions = "\n".join([f"이전 질문 {i+1}: {q}" for i, q in enumerate(recent_user_msgs)])
+
+    # 이전 요약
+    summary_text = state.get("summarization", "")
+    
     # 시스템 메시지 생성
     system_message = SYSTEM_PROMPT.format(
         input=last_msg.content,
-        documents=docs_text
+        documents=docs_text,
+        summary=summary_text
     )
-
-    # 이전 대화 요약이 존재하면 앞에 포함
-    if summarization:
-        system_message = f"이전 대화 요약:\n{summarization}\n\n" + system_message
+    
+    # 로그 출력
+    logger.info("===== Generation Node Debug =====")
+    logger.info(f"Current Question: {last_msg.content}")
+    logger.info(f"Conversation Summary: {summary_text}")
+    logger.info(f"Documents used for generation: {len(documents)}")
+    logger.info("===== End Debug =====")
 
     # LLM 호출
     response = model.invoke([SystemMessage(content=system_message)])
@@ -238,13 +230,44 @@ def generation_node(state: CustomState):
 
 
 
-def summarization_node(state: CustomState):
+def summarization_node(state: CustomState, max_pairs=3):
+    """
+    최근 Human/AI 메시지 max_pairs 쌍을 요약하여 멀티턴 컨텍스트 유지
+    """
     logger.info(">>> [NODE] summarization_node START")
-    messages = state.get("messages")
-    summary_prompt = "대화를 요약하세요:\n" + "\n".join([msg.content for msg in messages])
-    response = model.invoke([SystemMessage(content=summary_prompt)])
+    
+    messages = state.get("messages", [])
+    
+    # 최근 max_pairs 쌍 추출
+    recent_pairs = []
+    human_msg = None
+    for msg in reversed(messages):
+        if isinstance(msg, HumanMessage):
+            human_msg = msg.content
+        elif isinstance(msg, AIMessage) and human_msg:
+            recent_pairs.append((human_msg, msg.content))
+            human_msg = None
+        if len(recent_pairs) >= max_pairs:
+            break
+    recent_pairs.reverse()  # 시간 순 정렬
 
-    delete_msgs = [RemoveMessage(id=msg.id) for msg in messages[:-8]]
-    state["summarization"] = str(response.content).strip()
-    logger.info("Conversation summarized.")
+    # 요약 프롬프트 구성
+    summary_prompt = "최근 대화 요약:\n"
+    for i, (user_q, ai_a) in enumerate(recent_pairs, 1):
+        summary_prompt += f"{i}. 사용자: {user_q}\n"
+        summary_prompt += f"   AI: {ai_a}\n"
+    
+    summary_prompt += "\n위 대화를 간결하고 핵심적으로 요약하세요."
+
+    # LLM 호출
+    response = model.invoke([SystemMessage(content=summary_prompt)])
+    new_summary = str(response.content).strip()
+    
+    # 상태에 저장
+    state["summarization"] = new_summary
+    logger.info(f"Conversation summarized: {new_summary}")
+
+    # 오래된 메시지 삭제
+    delete_msgs = [RemoveMessage(id=msg.id) for msg in messages[-(max_pairs*2):]]
+    
     return {"summarization": state["summarization"], "messages": delete_msgs}
