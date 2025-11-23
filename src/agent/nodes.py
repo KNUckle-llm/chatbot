@@ -25,11 +25,13 @@ def generate_query_or_response_node(state: CustomState):
     current_question = messages[-1].content  # 현재 사용자 질문
     prev_department = state.get("current_department")
 
+    if state.get("follow_up_chain") is None:
+        state["follow_up_chain"] = []
+    
     # 🔹 현재 질문을 체인에 append    
     state["follow_up_chain"].append(current_question)
-    logger.info(f"현재 질문: {current_question}")
-    logger.info(f"follow_up_chain 상태: {state['follow_up_chain']}")
-
+    logger.info(f"현재 질문 append 후 follow_up_chain: {state['follow_up_chain']}")
+    
     is_follow_up = False
     # 🔹 체인이 2개 이상일 때만 follow-up 판단
     if len(state["follow_up_chain"]) > 1:
@@ -50,10 +52,12 @@ def generate_query_or_response_node(state: CustomState):
         if is_follow_up:
             # 연속 질문이면 follow-up True 유지, 체인 그대로
             state["follow_up"] = True
+            logger.info(f"Follow-up 판단: YES, follow_up_chain 유지: {state['follow_up_chain']}")
         else:
             # 연관 없는 새 질문이면 follow-up False, 체인 초기화 후 현재 질문만 남김
             state["follow_up"] = False
             state["follow_up_chain"] = [current_question]
+            logger.info(f"Follow-up 판단: NO, follow_up_chain 초기화 후 상태: {state['follow_up_chain']}")
         
         logger.info(f"Follow-up 판단 결과: {is_follow_up}, 체인 상태: {state['follow_up_chain']}")
     
@@ -61,7 +65,7 @@ def generate_query_or_response_node(state: CustomState):
     if is_follow_up:
         state["question_appropriate"] = True
         state["question_reason"] = None
-        return {"follow_up": True, "question_appropriate": True}
+        return {"follow_up": True, "question_appropriate": True, "follow_up_chain": list(state.get("follow_up_chain", []))}
     
     # 🔹 질문 적절성 판단 (LLM 호출)
     appropriateness_prompt = (
@@ -107,9 +111,10 @@ def generate_query_or_response_node(state: CustomState):
     logger.info(f"follow_up_chain: {state['follow_up_chain']}")
     logger.info(f"question_appropriate: {state['question_appropriate']}, reason: {state.get('question_reason')}")
     return {
-        "follow_up": False,
+        "follow_up": state.get("follow_up", False),
         "question_appropriate": state["question_appropriate"],
-        "question_reason": state.get("question_reason", None)
+        "question_reason": state.get("question_reason", None),
+        "follow_up_chain": list(state.get("follow_up_chain", []))
     }
 
 

@@ -1,5 +1,4 @@
 from typing import Any, Dict, List, Optional, Literal
-from pydantic import Field
 from langgraph.graph import MessagesState
 
 
@@ -11,5 +10,5 @@ class CustomState(MessagesState):
     question_appropriate: Optional[bool]  # 질문 적절성 판단
     question_reason: Optional[str]        # 질문 판단 이유
     current_department: Optional[str] = None   # 현재 대화 주제와 관련된 학과
-    follow_up: Optional[bool] = False          # follow-up 여부
-    follow_up_chain: List[str] = Field(default_factory=list)           # follow-up 질문 누적 체인
+    follow_up: Optional[bool] = None           # follow-up 여부
+    follow_up_chain: List[str] = []            # follow-up 질문 누적 체인
