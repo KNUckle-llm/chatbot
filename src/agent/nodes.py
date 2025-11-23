@@ -46,9 +46,9 @@ def generate_query_or_response_node(state: CustomState):
 
         "2) 검색 가능한 문서 범위는 다음과 같습니다.\n"
         "   - 공주대학교 전학과 통합 수강신청/장학/비자/논문/순환버스\n"
-        "   - 학과별 교수님/교과과정표/공지사항/자료/서식/규정\n"
+        "   - 학과별 교수님(연락처, 이메일, 연구실 등)/교과과정표/공지사항/자료/서식/규정\n"
         "   - SW사업단 소개/공지사항/소식/대회일정(TOPCIT, SW알고리즘 경진대회 등)\n"
-        "   - 교수님 정보에는 이메일, 전화번호, 연구실, 연구활동 등이 있습니다.\n\n"
+        "   - 단, 교수님에 관한 질문인 경우 반드시 부서가 명시적으로 있어야 합니다.\n\n"
 
         "3) 개인정보 포함 여부는 적절성 판단 기준이 아닙니다.\n"
         "   위 판단 기준으로 답이 가능한지 여부만 고려하세요.\n\n"
@@ -162,14 +162,15 @@ def rewrite_question_node(state: CustomState):
 
     last_msg = state.get("messages")[-1]
     reason = state.get("question_reason", "불명확한 이유 없음")
-    #previous_summary = state.get("summarization", "")
+    previous_summary = state.get("summarization", "")
     
     prompt = (
         f"사용자가 한 질문: {last_msg.content}\n"
         f"불명확한 이유: {reason}\n\n"
+        f"이전 대화 요약: {previous_summary}\n\n"
         "사용자에게 보여줄 안내 메시지를 작성하세요. 형식은 다음과 같아야 합니다:\n"
         "첫 문단입니다. '질문은 다음과 같은 이유로 불명확합니다. 질문을 다시 입력해주세요.'\n"
-        "두 번째 문단입니다. 불명확한 이유를 서술하세요.\n"
+        "두 번째 문단입니다. 이전 대화 요약과 불명확한 이유를 참고하여, 질문이 검색되지 않은 이유를 명확하게 설명하세요.n"
         "세 번째 문단입니다. '이렇게 질문하는건 어떨까요?' 라는 문장으로 시작하고,\n"
         "   사용자의 질문과 불명확한 이유를 기반으로 더 구체적이고 적절한 질문 예시 1~2개를 bullet 형식으로 제시하세요."
     )
@@ -178,10 +179,12 @@ def rewrite_question_node(state: CustomState):
     state.get("messages").append(response)
     logger.info("HITL 안내 메시지 생성 완료.")
 
-    # 요약 업데이트
-    summarization_node(state)
+    # HITL 안내 메시지 후 바로 요약 업데이트
+    # summary_result = summarization_node(state)
 
-    return {"messages": state.get("messages")}
+    logger.info("Rewritten question/feedback added and summarized.")
+    return {"messages": state.get("messages"), "summarization": summary_result["summarization"]}
+
 
 
 def generation_node(state: CustomState):
@@ -223,51 +226,20 @@ def generation_node(state: CustomState):
     logger.info(f"Documents used for generation: {len(documents)}")
     logger.info("===== End Debug =====")
 
-    # LLM 호출
+    # LLM 호출, 답변 생성
     response = model.invoke([SystemMessage(content=system_message)])
     state.get("messages").append(response)
+    
     return {"messages": state.get("messages")}
 
 
-
-def summarization_node(state: CustomState, max_pairs=3):
-    """
-    최근 Human/AI 메시지 max_pairs 쌍을 요약하여 멀티턴 컨텍스트 유지
-    """
+def summarization_node(state: CustomState):
     logger.info(">>> [NODE] summarization_node START")
-    
-    messages = state.get("messages", [])
-    
-    # 최근 max_pairs 쌍 추출
-    recent_pairs = []
-    human_msg = None
-    for msg in reversed(messages):
-        if isinstance(msg, HumanMessage):
-            human_msg = msg.content
-        elif isinstance(msg, AIMessage) and human_msg:
-            recent_pairs.append((human_msg, msg.content))
-            human_msg = None
-        if len(recent_pairs) >= max_pairs:
-            break
-    recent_pairs.reverse()  # 시간 순 정렬
-
-    # 요약 프롬프트 구성
-    summary_prompt = "최근 대화 요약:\n"
-    for i, (user_q, ai_a) in enumerate(recent_pairs, 1):
-        summary_prompt += f"{i}. 사용자: {user_q}\n"
-        summary_prompt += f"   AI: {ai_a}\n"
-    
-    summary_prompt += "\n위 대화를 간결하고 핵심적으로 요약하세요."
-
-    # LLM 호출
+    messages = state.get("messages")
+    summary_prompt = "대화를 요약하세요:\n" + "\n".join([msg.content for msg in messages])
     response = model.invoke([SystemMessage(content=summary_prompt)])
-    new_summary = str(response.content).strip()
-    
-    # 상태에 저장
-    state["summarization"] = new_summary
-    logger.info(f"Conversation summarized: {new_summary}")
 
-    # 오래된 메시지 삭제
-    delete_msgs = [RemoveMessage(id=msg.id) for msg in messages[-(max_pairs*2):]]
-    
+    delete_msgs = [RemoveMessage(id=msg.id) for msg in messages[:-8]]
+    state["summarization"] = str(response.content).strip()
+    logger.info("Conversation summarized.")
     return {"summarization": state["summarization"], "messages": delete_msgs}
