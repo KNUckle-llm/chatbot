@@ -25,26 +25,28 @@ def generate_query_or_response_node(state: CustomState):
     current_question = messages[-1].content  # 현재 사용자 질문
     prev_department = state.get("current_department")
 
+    logger.info(f"현재 질문: {current_question}")
+    logger.info(f"이전 chain 상태: {state.get('follow_up_chain')}")
+    
     # 🔹 최초 질문이면 follow_up_chain 초기화
-    if state.get("follow_up_chain") is None or len(state.get("follow_up_chain", [])) == 0:
-        state["follow_up_chain"] = [current_question]
+    # 🔹 follow_up_chain 초기화
+    if state.get("follow_up_chain") is None:
+        state["follow_up_chain"] = []
         state["follow_up"] = False
-        logger.info("첫 질문이므로 follow_up_chain 초기화됨")
-        previous_questions = ""  # 첫 질문이므로 이전 질문 없음
-    else:
-        previous_questions = " ".join(state["follow_up_chain"])  # chain 전체
+        logger.info("follow_up_chain 초기화됨")
+
+    previous_questions = " ".join(state["follow_up_chain"]) if state["follow_up_chain"] else ""
 
     # 🔹 follow-up 판단 (첫 질문이면 건너뜀)
     is_follow_up = False
-    if len(state["follow_up_chain"]) > 1:
+    if state["follow_up_chain"]: # 이전 질문이 있을 때만 판단
         followup_prompt = (
             "너는 공주대학교 정보를 알려주는 챗봇입니다.\n"
             f"사용자 질문: {current_question}\n"
             f"이전 질문: {previous_questions}\n"
             f"이전 질문 학과: {prev_department}\n"
             "이 질문이 이전 질문과 관계된 follow-up 질문인지 반드시 영문 yes/no 로만 답하세요.\n"
-            "이전 질문과 현재 질문이 서로 다른 학과(또는 서로 다른 교수/대회/제도 등)에 대한 질문이면 반드시 no 로 판단하세요.\n"
-            "반대로 동일 학과 혹은 동일 교수/강의/제도 등에 대한 추가적인 질문이라면 반드시 yes 로 판단하세요.\n"
+            "다른 주제라면 no, 동일 주제의 추가 질문이면 yes로 판단하세요.\n"
         )
         followup_response = model.invoke([SystemMessage(content=followup_prompt)])
         followup_text = followup_response.content.strip().lower()
@@ -52,19 +54,17 @@ def generate_query_or_response_node(state: CustomState):
         state["follow_up"] = is_follow_up
         logger.info(f"Follow-up 판단 결과: {is_follow_up}")
     
-    # 🔹 follow-up이면 chain에 추가하고 바로 종료
+    # 🔹 follow-up이면 체인에 추가 후 종료
     if is_follow_up:
         state["follow_up_chain"].append(current_question)
         state["question_appropriate"] = True
         state["question_reason"] = None
         return {"follow_up": True, "question_appropriate": True}
 
-    # 🔹 follow-up이 아니면 chain 갱신 (첫 질문도 포함)
-    if not is_follow_up:
-        if len(state["follow_up_chain"]) > 1:
-            # 기존 chain 초기화 후 새로운 질문 시작
-            state["follow_up_chain"] = [current_question]
-        # 첫 질문이면 이미 chain 초기화 되어 있음
+    # 🔹 follow-up이 아니면 새로운 질문으로 체인 갱신
+    state["follow_up_chain"] = [current_question]
+    state["follow_up"] = False
+    
     
     # 🔹 질문 적절성 판단 (LLM 호출)
     appropriateness_prompt = (
@@ -167,15 +167,19 @@ def retrieve_documents_node(state: CustomState, max_docs: int = 3):
     else:
         # follow-up이면 이전 학과 유지
         predicted_department = state.get("current_department", "")
+        logger.info(f"Follow-up이므로 이전 학과 유지: {predicted_department}")
 
     # 학과 갱신
-    if state.get("current_department") != predicted_department:
-        state["current_department"] = predicted_department
+    state["current_department"] = predicted_department
     
-    # 이전 학과/주제 참조
-    dept = state.get("current_department", "")
-    extended_query = f"{dept} {previous_questions} {query}" if previous_questions else f"{dept} {query}"
+    # 🔹 쿼리 개선: follow-up 체인을 포함하여 검색 정확도 향상
+    if previous_questions:
+        # follow-up 체인 중 현재 질문 이후 내용을 제외하고 이어서 쿼리 구성
+        extended_query = f"{predicted_department} {' '.join(state['follow_up_chain'])}"
+    else:
+        extended_query = f"{predicted_department} {query}"
     extended_query = extended_query.strip()
+    logger.info(f"검색용 extended_query: {extended_query}")  # 🔹 디버그용
     
     # store에서 검색
     if predicted_department in departments:
@@ -217,17 +221,11 @@ def rewrite_question_node(state: CustomState):
     prompt = (
         f"사용자가 한 질문: {last_msg.content}\n"
         f"불명확한 이유: {reason}\n\n"
-        f"관련 학과: {prev_department}\n\n"
-        "사용자에게 보여줄 안내 메시지를 작성하세요. 아래 형식을 반드시 따르세요:\n\n"
-        "1) 첫 번째 문단:\n"
-        "   다음 문장을 그대로 작성합니다:\n"
-        "   질문은 다음과 같은 이유로 불명확합니다. 질문을 다시 입력해주세요.\n\n"
-        "2) 두 번째 문단:\n"
-        "   불명확한 이유를 기반으로, 이전 대화를 참고하여 왜 검색을 수행하지 못하는지 서술하세요.\n\n"
-        "3) 세 번째 문단:\n"
-        "   문단은 반드시 '이렇게 질문하는건 어떨까요?'로 시작합니다.\n"
-        "   이후 LLM이 현재 질문과 불명확한 이유를 바탕으로,\n"
-        "   더 구체적이고 검색 가능한 질문 예시 1~2개를 bullet 형식으로 작성합니다.\n"
+        "사용자에게 보여줄 안내 메시지를 작성하세요. 형식은 다음과 같아야 합니다:\n"
+        "첫 문단입니다. '질문은 다음과 같은 이유로 불명확합니다. 질문을 다시 입력해주세요.'\n"
+        "두 번째 문단입니다. 불명확한 이유를 서술하세요.\n"
+        "세 번째 문단입니다. '이렇게 질문하는건 어떨까요?' 형식으로,\n"
+        "   사용자가 입력한 질문을 기반으로 조금 더 구체적이고 적절하게 만든 1~2개의 질문 예시 제공."
     )
     
     # AI메세지 추가
@@ -244,15 +242,16 @@ def generation_node(state: CustomState):
     documents = state.get("documents", [])
     summarization = state.get("summarization", "")
     last_msg = state.get("messages")[-1]
-
-    docs_text = "\n\n".join([
-        f"""[검색된 문서 {i+1}]
-    문서 내용: {d['content']}
-    제목: {d.get('metadata', {}).get('file_name', '')}
-    부서: {d.get('metadata', {}).get('department', '')}
-    작성일: {d.get('metadata', {}).get('date', '')}
-    출처: {d.get('metadata', {}).get('url', '')}
-    """ for i, d in enumerate(documents)
+    
+    # 문서 내용 그대로 전달 + 개행 유지 + 문서 사이 빈 줄 추가
+    docs_text = "\n\n---\n\n".join([
+        f"문서 {i+1}\n\n"
+        f"본문 내용:\n{d['content']}\n\n"
+        f"제목:\n{d.get('metadata', {}).get('file_name', '')}\n\n"
+        f"부서:\n{d.get('metadata', {}).get('department', '')}\n\n"
+        f"작성일:\n{d.get('metadata', {}).get('date', '')}\n\n"
+        f"출처:\n{d.get('metadata', {}).get('url', '')}\n"
+        for i, d in enumerate(documents)
     ])
     
     # 시스템 메시지 생성
