@@ -35,7 +35,7 @@ def generate_query_or_response_node(state: CustomState):
     is_follow_up = False
     # 🔹 체인이 2개 이상일 때만 follow-up 판단
     if len(state["follow_up_chain"]) > 1:
-        previous_questions = " ".join(state["follow_up_chain"][:-1])
+        previous_questions = " / ".join(state["follow_up_chain"][:-1])
     
         followup_prompt = (
             "너는 공주대학교 정보를 안내하는 챗봇이다.\n"
@@ -60,9 +60,9 @@ def generate_query_or_response_node(state: CustomState):
             logger.info(f"Follow-up 판단: YES, follow_up_chain 유지: {state['follow_up_chain']}")
 
             # 🔹 FOLLOW-UP 질문 재작성 (체인 기반)
-            combined_question = " ".join(state["follow_up_chain"])
+            combined_question = " / ".join(state["follow_up_chain"])
             rewrite_prompt = (
-                f"아래 질문들을 자연스럽게 합쳐서 검색하기 적합한 질문으로 바꿔주세요:\n"
+                f"이전 질문들을 참고하여, 마지막 질문을 자연스럽게 검색하기 적합한 한 문장으로 바꾸세요.\n"
                 f"{combined_question}"
             )
             rewritten = model.invoke([SystemMessage(content=rewrite_prompt)]).content.strip()
@@ -72,8 +72,8 @@ def generate_query_or_response_node(state: CustomState):
             state["question_appropriate"] = True
             state["question_reason"] = None
             return {
-                "follow_up": True,
-                "question_appropriate": True,
+                "follow_up": state["follow_up"],
+                "question_appropriate": state["question_appropriate"],
                 "follow_up_chain": list(state.get("follow_up_chain", []))
             }
         else:
@@ -150,7 +150,10 @@ def route_before_retrieval_node(state: CustomState) -> Literal["retrieve", "rewr
 def retrieve_documents_node(state: CustomState, max_docs: int = 3):
     logger.info(">>> [NODE] retrieve_documents_node START")
     messages = state.get("messages")
-    query = messages[-1].content
+    #query = messages[-1].content
+    query = state['follow_up_chain'][-1].strip()
+    follow_up = state.get("follow_up", False)
+    logger.info(f"retrieve_documents_node: follow_up={follow_up}, current_department={state.get('current_department')}")
 
     # 학과 후보 리스트
     departments = [
@@ -161,7 +164,7 @@ def retrieve_documents_node(state: CustomState, max_docs: int = 3):
         "SW중심대학사업단",
         "스마트정보기술공학과",
         "인공지능학부",
-        "공주대학교 현장실습지원센터"
+        # "공주대학교 현장실습지원센터"
     ]
     
     # 2) alias 매핑 (여기서 OR 조건 처리)
@@ -169,8 +172,7 @@ def retrieve_documents_node(state: CustomState, max_docs: int = 3):
         "공주대학교 SW중심대학사업단": ["공주대학교 SW중심대학사업단", "SW중심대학사업단"],
         "SW중심대학사업단": ["공주대학교 SW중심대학사업단", "SW중심대학사업단"],
     }
-    
-    follow_up = state.get("follow_up", False)
+
 
     # FOLLOW-UP이면 이전 학과 유지, 재예측 금지
     if follow_up and state.get("current_department"):
@@ -218,7 +220,7 @@ def retrieve_documents_node(state: CustomState, max_docs: int = 3):
     ]
     
     logger.info(f"Retrieved {len(docs)} documents for query: {extended_query}")
-    return {"documents": state["documents"]}
+    return {"documents": state["documents"], "current_department": state.get("current_department")}
 
 
 
