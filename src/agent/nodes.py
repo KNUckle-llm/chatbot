@@ -38,12 +38,17 @@ def generate_query_or_response_node(state: CustomState):
         previous_questions = " ".join(state["follow_up_chain"][:-1])
     
         followup_prompt = (
-            "너는 공주대학교 챗봇입니다.\n"
-            f"사용자 질문: {current_question}\n"
-            f"이전 질문: {previous_questions}\n"
-            f"이전 질문 학과: {prev_department}\n"
-            "이 질문이 이전 질문과 관계된 follow-up 질문인지 반드시 영문 yes/no 로만 답하세요.\n"
-            "다른 주제라면 no, 동일 주제의 추가 질문이면 yes로 판단하세요.\n"
+            "너는 공주대학교 정보를 안내하는 챗봇이다.\n"
+            f"현재 질문: {current_question}\n"
+            f"이전 질문들: {previous_questions}\n"
+            f"관련 학과: {prev_department}\n"
+            
+            "현재 질문이 follow-up인지 판단하여 반드시 영문 yes/no 둘중에 하나로만 답하세요.\n"
+            
+            "판단 기준:\n"
+            "- 동일한 대상/행사/문서 등에 대한 추가 질문이면 follow-up\n"
+            "- '그럼, 그거, 그러면'처럼 이전 질문을 지시하면 follow-up\n"
+            "- 주제가 바뀌면 follow-up 아님\n"
         )
         followup_response = model.invoke([SystemMessage(content=followup_prompt)])
         followup_text = followup_response.content.strip().lower()
@@ -129,7 +134,7 @@ def route_before_retrieval_node(state: CustomState) -> Literal["retrieve", "rewr
 
 
 
-def retrieve_documents_node(state: CustomState, max_docs: int = 2):
+def retrieve_documents_node(state: CustomState, max_docs: int = 3):
     logger.info(">>> [NODE] retrieve_documents_node START")
     messages = state.get("messages")
     query = messages[-1].content
@@ -154,9 +159,11 @@ def retrieve_documents_node(state: CustomState, max_docs: int = 2):
     
     previous_questions = " ".join(state.get("follow_up_chain", []))
     follow_up = state.get("follow_up", False)
-
+    current_department = state.get("current_department", "")
+    need_predict = (not follow_up) or (not current_department)
+    
     # LLM에게 질문 관련 학과 예측
-    if not follow_up:
+    if need_predict:
         # follow-up이 아니면 LLM으로 학과 예측
         dept_prompt = (
             f"사용자 질문: {query}\n"
@@ -175,10 +182,10 @@ def retrieve_documents_node(state: CustomState, max_docs: int = 2):
     # 학과 갱신
     state["current_department"] = predicted_department
     
-    # 🔹 쿼리 개선: follow-up 체인을 포함하여 검색 정확도 향상
-    if previous_questions:
+    # 🔹 쿼리 확장
+    if follow_up:
         # follow-up 체인 중 현재 질문 이후 내용을 제외하고 이어서 쿼리 구성
-        extended_query = f"{predicted_department} {' '.join(state['follow_up_chain'])}"
+        extended_query = f"{predicted_department} {' / '.join(state['follow_up_chain'])}"
     else:
         extended_query = f"{predicted_department} {query}"
     extended_query = extended_query.strip()
