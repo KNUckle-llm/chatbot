@@ -25,23 +25,24 @@ def generate_query_or_response_node(state: CustomState):
     current_question = messages[-1].content  # 현재 사용자 질문
     prev_department = state.get("current_department")
 
-    logger.info(f"현재 질문: {current_question}")
-    logger.info(f"이전 chain 상태: {state.get('follow_up_chain')}")
-    
-    # 🔹 최초 질문이면 follow_up_chain 초기화
     # 🔹 follow_up_chain 초기화
     if state.get("follow_up_chain") is None:
         state["follow_up_chain"] = []
         state["follow_up"] = False
         logger.info("follow_up_chain 초기화됨")
+    
+    # 🔹 현재 질문을 체인에 append    
+    state["follow_up_chain"].append(current_question)
+    logger.info(f"현재 질문: {current_question}")
+    logger.info(f"follow_up_chain 상태: {state['follow_up_chain']}")
 
-    previous_questions = " ".join(state["follow_up_chain"]) if state["follow_up_chain"] else ""
-
-    # 🔹 follow-up 판단 (첫 질문이면 건너뜀)
     is_follow_up = False
-    if state["follow_up_chain"]: # 이전 질문이 있을 때만 판단
+    # 🔹 체인이 2개 이상일 때만 follow-up 판단
+    if len(state["follow_up_chain"]) > 1:
+        previous_questions = " ".join(state["follow_up_chain"][:-1])
+    
         followup_prompt = (
-            "너는 공주대학교 정보를 알려주는 챗봇입니다.\n"
+            "너는 공주대학교 챗봇입니다.\n"
             f"사용자 질문: {current_question}\n"
             f"이전 질문: {previous_questions}\n"
             f"이전 질문 학과: {prev_department}\n"
@@ -51,20 +52,22 @@ def generate_query_or_response_node(state: CustomState):
         followup_response = model.invoke([SystemMessage(content=followup_prompt)])
         followup_text = followup_response.content.strip().lower()
         is_follow_up = followup_text.startswith("yes")
-        state["follow_up"] = is_follow_up
-        logger.info(f"Follow-up 판단 결과: {is_follow_up}")
+        
+        if is_follow_up:
+            # 연속 질문이면 follow-up True 유지, 체인 그대로
+            state["follow_up"] = True
+        else:
+            # 연관 없는 새 질문이면 follow-up False, 체인 초기화 후 현재 질문만 남김
+            state["follow_up"] = False
+            state["follow_up_chain"] = [current_question]
+        
+        logger.info(f"Follow-up 판단 결과: {is_follow_up}, 체인 상태: {state['follow_up_chain']}")
     
-    # 🔹 follow-up이면 체인에 추가 후 종료
+    # 🔹 follow-up이면 바로 적절성 True 처리 후 종료
     if is_follow_up:
-        state["follow_up_chain"].append(current_question)
         state["question_appropriate"] = True
         state["question_reason"] = None
         return {"follow_up": True, "question_appropriate": True}
-
-    # 🔹 follow-up이 아니면 새로운 질문으로 체인 갱신
-    state["follow_up_chain"] = [current_question]
-    state["follow_up"] = False
-    
     
     # 🔹 질문 적절성 판단 (LLM 호출)
     appropriateness_prompt = (
@@ -107,6 +110,7 @@ def generate_query_or_response_node(state: CustomState):
         state["question_appropriate"] = False
         state["question_reason"] = "LLM 출력 형식 오류"
 
+    logger.info(f"follow_up_chain: {state['follow_up_chain']}")
     logger.info(f"question_appropriate: {state['question_appropriate']}, reason: {state.get('question_reason')}")
     return {
         "follow_up": False,
@@ -126,7 +130,7 @@ def route_before_retrieval_node(state: CustomState) -> Literal["retrieve", "rewr
 
 
 
-def retrieve_documents_node(state: CustomState, max_docs: int = 3):
+def retrieve_documents_node(state: CustomState, max_docs: int = 2):
     logger.info(">>> [NODE] retrieve_documents_node START")
     messages = state.get("messages")
     query = messages[-1].content
@@ -225,7 +229,7 @@ def rewrite_question_node(state: CustomState):
         "첫 문단입니다. '질문은 다음과 같은 이유로 불명확합니다. 질문을 다시 입력해주세요.'\n"
         "두 번째 문단입니다. 불명확한 이유를 서술하세요.\n"
         "세 번째 문단입니다. '이렇게 질문하는건 어떨까요?' 형식으로,\n"
-        "   사용자가 입력한 질문을 기반으로 조금 더 구체적이고 적절하게 만든 1~2개의 질문 예시 제공."
+        "   사용자가 입력한 질문과 불명확한 이유를 기반으로 더 구체적이고 적절한 1~2개의 질문을 예시로 제공.(bullet형)"
     )
     
     # AI메세지 추가
