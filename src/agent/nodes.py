@@ -134,7 +134,7 @@ def route_before_retrieval_node(state: CustomState) -> Literal["retrieve", "rewr
 
 
 
-def retrieve_documents_node(state: CustomState, max_docs: int = 3):
+def retrieve_documents_node(state: CustomState, max_docs: int = 2):
     logger.info(">>> [NODE] retrieve_documents_node START")
     messages = state.get("messages")
     query = messages[-1].content
@@ -157,14 +157,14 @@ def retrieve_documents_node(state: CustomState, max_docs: int = 3):
         "SW중심대학사업단": ["공주대학교 SW중심대학사업단", "SW중심대학사업단"],
     }
     
-    previous_questions = " ".join(state.get("follow_up_chain", []))
     follow_up = state.get("follow_up", False)
-    current_department = state.get("current_department", "")
-    need_predict = (not follow_up) or (not current_department)
-    
-    # LLM에게 질문 관련 학과 예측
-    if need_predict:
-        # follow-up이 아니면 LLM으로 학과 예측
+
+    # 🔹follow-up이면 이전 학과 그대로 유지
+    if follow_up and state.get("current_department"):
+        predicted_department = state["current_department"]
+        logger.info(f"Follow-up이므로 이전 학과 유지: {predicted_department}")
+    else:
+        # 새 질문이면 LLM으로 학과 예측
         dept_prompt = (
             f"사용자 질문: {query}\n"
             f"질문을 보고 아래 목록 중에서 관련 학과/부서를 하나 선택하세요:\n"
@@ -174,22 +174,13 @@ def retrieve_documents_node(state: CustomState, max_docs: int = 3):
         dept_response = model.invoke([SystemMessage(content=dept_prompt)])
         predicted_department = dept_response.content.strip()
         logger.info(f"Predicted department: {predicted_department}")
-    else:
-        # follow-up이면 이전 학과 유지
-        predicted_department = state.get("current_department", "")
-        logger.info(f"Follow-up이므로 이전 학과 유지: {predicted_department}")
 
     # 학과 갱신
     state["current_department"] = predicted_department
     
     # 🔹 쿼리 확장
-    if follow_up:
-        # follow-up 체인 중 현재 질문 이후 내용을 제외하고 이어서 쿼리 구성
-        extended_query = f"{predicted_department} {' / '.join(state['follow_up_chain'])}"
-    else:
-        extended_query = f"{predicted_department} {query}"
-    extended_query = extended_query.strip()
-    logger.info(f"검색용 extended_query: {extended_query}")  # 🔹 디버그용
+    extended_query = f"{predicted_department} {' / '.join(state.get('follow_up_chain', []))}".strip()
+    logger.info(f"검색용 extended_query: {extended_query}")
     
     # store에서 검색
     if predicted_department in departments:
@@ -214,7 +205,7 @@ def retrieve_documents_node(state: CustomState, max_docs: int = 3):
         for d in docs
     ]
     
-    logger.info(f"Retrieved {len(docs)} documents for query: {query}")
+    logger.info(f"Retrieved {len(docs)} documents for query: {extended_query}")
     return {"documents": state["documents"]}
 
 
@@ -236,7 +227,7 @@ def rewrite_question_node(state: CustomState):
         f"불명확한 이유: {reason}\n\n"
         "사용자에게 보여줄 안내 메시지를 작성하세요. 형식은 다음과 같아야 합니다:\n"
         "첫 문단입니다. '질문은 다음과 같은 이유로 불명확합니다. 질문을 다시 입력해주세요.'\n"
-        "두 번째 문단입니다. 불명확한 이유를 서술하세요.\n"
+        "두 번째 문단에는 불명확한 이유를 서술하세요.\n"
         "세 번째 문단입니다. '이렇게 질문하는건 어떨까요?' 형식으로,\n"
         "   사용자가 입력한 질문과 불명확한 이유를 기반으로 더 구체적이고 적절한 1~2개의 질문을 예시로 제공.(bullet형)"
     )
