@@ -41,14 +41,14 @@ def generate_query_or_response_node(state: CustomState):
         "아래 기준을 바탕으로 이 질문이 검색 가능한 문서로 답변 가능한지 판단하세요.\n\n"
 
         "### 판단 기준\n"
-        "1) 아래 학과/부서 중 하나와 직접 관련된 질문이면 'yes'입니다.\n"
+        "1) 질문이 아래 학과/부서 중 하나와 관련된 질문이면 'yes'입니다.\n"
+        "질문에 아래 학과/부서가 명시되지 않았거나 불확실하면 'no'로 판단합니다.\n"
         f"   - {', '.join(departments)}\n\n"
 
         "2) 검색 가능한 문서 범위는 다음과 같습니다.\n"
         "   - 공주대학교 전학과 통합 수강신청/장학/비자/논문/순환버스\n"
         "   - 학과별 교수님(연락처, 이메일, 연구실 등)/교과과정표/공지사항/자료/서식/규정\n"
         "   - SW사업단 소개/공지사항/소식/대회일정(TOPCIT, SW알고리즘 경진대회 등)\n"
-        "   - 단, 교수님에 관한 질문인 경우 반드시 부서가 명시적으로 있어야 합니다.\n\n"
 
         "3) 개인정보 포함 여부는 적절성 판단 기준이 아닙니다.\n"
         "   위 판단 기준으로 답이 가능한지 여부만 고려하세요.\n\n"
@@ -178,12 +178,7 @@ def rewrite_question_node(state: CustomState):
     response = model.invoke([SystemMessage(content=prompt)])
     state.get("messages").append(response)
     logger.info("HITL 안내 메시지 생성 완료.")
-
-    # HITL 안내 메시지 후 바로 요약 업데이트
-    # summary_result = summarization_node(state)
-
-    logger.info("Rewritten question/feedback added and summarized.")
-    return {"messages": state.get("messages"), "summarization": summary_result["summarization"]}
+    return {"messages": state.get("messages")}
 
 
 
@@ -222,7 +217,7 @@ def generation_node(state: CustomState):
     # 로그 출력
     logger.info("===== Generation Node Debug =====")
     logger.info(f"Current Question: {last_msg.content}")
-    logger.info(f"Conversation Summary: {summary_text}")
+    logger.info(f"Conversation Summary: {summary_text or 'No summary yet'}")
     logger.info(f"Documents used for generation: {len(documents)}")
     logger.info("===== End Debug =====")
 
