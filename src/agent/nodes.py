@@ -21,13 +21,14 @@ def language_detection_node(state: CustomState):
 def generate_query_or_response_node(state: CustomState):
     logger.info(">>> [NODE] generate_query_or_response_node START")
     last_msg = state.get("messages")[-1]
+    
     prompt = (
         f"질문: {last_msg.content}\n"
         "아래 기준을 바탕으로 이 질문이 검색 가능한 문서로 답변 가능한지 판단하세요.\n\n"
 
         "### 판단 기준\n"
         "1) 검색 가능한 문서 범위 내에서 답변 가능한 질문이면 'yes'입니다.\n"
-        "   답변 불가하거나 불확실하면 'no'입니다.\n\n"
+        "   단, 부서가 명시적으로 적혀있지 않으면 'no'입니다.\n\n"
 
         "2) 검색 가능한 문서 범위는 다음과 같습니다.\n"
         "   - 공주대학교 통합 수강신청/장학/비자/논문/순환버스\n"
@@ -174,12 +175,18 @@ def rewrite_question_node(state: CustomState):
         f"사용자가 한 질문: {last_msg.content}\n"
         f"불명확한 이유: {reason}\n\n"
         f"이전 대화 요약: {previous_summary}\n\n"
-        "사용자에게 보여줄 안내 메시지를 작성하세요. 형식은 다음과 같아야 합니다:\n"
-        "첫 문단입니다. '질문은 다음과 같은 이유로 불명확합니다. 질문을 다시 입력해주세요.'\n"
-        "두 번째 문단입니다. 이전 대화 요약과 불명확한 이유를 참고하여, 질문이 검색되지 않은 이유를 명확하게 설명하세요.n"
-        "세 번째 문단입니다. '이렇게 질문하는건 어떨까요?' 라는 문장으로 시작하고,\n"
-        "   사용자의 질문과 불명확한 이유를 기반으로 더 구체적이고 적절한 질문 예시 1~2개를 bullet 형식으로 제시하세요."
-    )    
+        "사용자에게 보여줄 안내 메시지를 작성하세요. 아래 형식을 반드시 따르세요:\n\n"
+        "1) 첫 번째 문단:\n"
+        "   다음 문장을 그대로 작성합니다:\n"
+        "   '질문은 다음과 같은 이유로 불명확합니다. 질문을 다시 입력해주세요.'\n\n"
+        "2) 두 번째 문단:\n"
+        "   이전 대화 요약과 불명확한 이유를 기반으로,\n"
+        "   왜 검색이 되지 않았는지 명확하게 설명합니다.\n\n"
+        "3) 세 번째 문단:\n"
+        "   문단은 반드시 '이렇게 질문하는건 어떨까요?'로 시작합니다.\n"
+        "   이후 현재 질문과 불명확한 이유를 바탕으로,\n"
+        "   더 구체적이고 검색 가능한 질문 예시 1~2개를 bullet 형식으로 작성합니다.\n"
+    )
     
     # 3) LLM 호출 후 메시지 추가
     response = model.invoke([SystemMessage(content=prompt)])
@@ -199,11 +206,11 @@ def generation_node(state: CustomState):
     # 문서 내용을 정리해서 문자열로 만듦
     #docs_text = "\n".join([f"문서 {i+1}:\n    내용: {d['content']}" for i, d in enumerate(documents)])
     docs_text = "\n\n".join([
-        f"문서 {i+1}\n"
-        f"본문 내용: {d['content']}\n"
+        f"[검색된 문서 {i+1}]\n"
+        f"본문 내용:\n{d['content']}\n"
         f"제목: {d.get('metadata', {}).get('file_name', '')}\n"
         f"부서: {d.get('metadata', {}).get('department', '')}\n"
-        f"작성일: {d.get('metadata', {}).get('date', '')}"
+        f"작성일: {d.get('metadata', {}).get('date', '')}\n"
         f"출처: {d.get('metadata', {}).get('url', '')}\n"
         for i, d in enumerate(documents)
     ])
